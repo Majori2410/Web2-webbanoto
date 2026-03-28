@@ -1,7 +1,7 @@
 <?php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-
+// final commit
 include '../User/connect.php';
 
 echo "<h2>Test ket noi database</h2>";

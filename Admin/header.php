@@ -1,4 +1,5 @@
 <?php
+// final commit
 session_start();
 $username = isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : '';
 $password = isset($_SESSION['password']) ? htmlspecialchars($_SESSION['password']) : '';

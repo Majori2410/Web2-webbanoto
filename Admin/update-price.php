@@ -1,7 +1,7 @@
 <?php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-
+// final commit
 include '../User/connect.php';
 
 $product_id = (int)($_POST['product_id'] ?? 0);
