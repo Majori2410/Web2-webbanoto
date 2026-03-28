@@ -1,4 +1,5 @@
 <?php
+// final commit
 session_start();
 $username = isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : '';
 $password = isset($_SESSION['password']) ? htmlspecialchars($_SESSION['password']) : '';
@@ -742,16 +743,25 @@ a[href*="inventory"] .nav-count {
         <span>Manage Products</span>
         <span class="nav-count"><?php echo $counts['products']; ?></span>
     </a>
-             <a href="best-seller.php">
+    <a href="best-seller.php">
         <i class="fa-solid fa-star"></i>
         <span>Best Sellers</span>
     <span class="nav-count"><?php echo $counts['products']; ?></span>
-</a>
+    </a>
     <a href="manage-inventory.php">
         <i class="fa-solid fa-star"></i>
         <span>Inventory Statistics</span>
     <span class="nav-count"><?php echo $counts['products']; ?></span>
-</a>
+    </a>
+    <a href="manage-prices.php">
+    <i class="fa-solid fa-money-bill-trend-up"></i>
+    <span>Quản lý giá bán</span>
+    </a>
+
+    <a href="price-history.php">
+    <i class="fa-solid fa-clock-rotate-left"></i>
+    <span>Tra cứu giá lô nhập</span>
+    </a>
         <div class="nav-user">
         <span class="user-greeting">
             <i class="fa-regular fa-user"></i>
