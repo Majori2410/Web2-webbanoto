@@ -2,6 +2,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+//test commit
 include '../User/connect.php';
 
 $result = mysqli_query($connect, "
