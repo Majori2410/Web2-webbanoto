@@ -1,9 +1,17 @@
 <?php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-// final commit
 
-include '../User/connect.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    header("Location: login.php");
+    exit();
+}
+
+include_once '../User/connect.php';
 
 $keyword = trim($_GET['keyword'] ?? '');
 
@@ -29,9 +37,8 @@ if ($keyword !== '') {
     $result = mysqli_query($connect, $sql);
 }
 ?>
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -76,6 +83,7 @@ if ($keyword !== '') {
             text-decoration:none;
             cursor:pointer;
             font-weight:bold;
+            display:inline-block;
         }
         .btn-primary{
             background:#1abc9c;
@@ -113,7 +121,7 @@ if ($keyword !== '') {
             padding:6px 10px;
             border-radius:999px;
             font-size:12px;
-            font-weight:bold;
+font-weight:bold;
         }
         .top-link{
             display:inline-block;
@@ -121,6 +129,17 @@ if ($keyword !== '') {
             color:#1abc9c;
             text-decoration:none;
             font-weight:bold;
+        }
+        @media (max-width: 768px){
+            table{
+                display:block;
+                overflow-x:auto;
+                white-space:nowrap;
+            }
+            .toolbar{
+                flex-direction:column;
+                align-items:stretch;
+            }
         }
     </style>
 </head>
@@ -157,32 +176,31 @@ if ($keyword !== '') {
                     <th>Thao tác</th>
                 </tr>
 
-                <tr>
-                    <?php while ($row = mysqli_fetch_assoc($result)): ?>
-            <tr>
-                <td><?php echo $row['purchase_id']; ?></td>
-                <td><?php echo htmlspecialchars($row['purchase_code']); ?></td>
-                <td><?php echo htmlspecialchars($row['supplier_name'] ?? 'Chưa có'); ?></td>
-                <td><?php echo htmlspecialchars($row['purchase_date']); ?></td>
-                <td>
-                    <?php if ($row['status'] === 'draft'): ?>
-                        <span class="badge-draft">Nháp</span>
-                    <?php else: ?>
-                        <span class="badge-completed">Hoàn thành</span>
-                    <?php endif; ?>
-                </td>
-                <td><?php echo number_format((float)$row['total_amount'], 0, ',', '.'); ?> đ</td>
-                <td>
-                    <a href="view-purchase-order.php?id=<?php echo $row['purchase_id']; ?>" class="btn btn-secondary">
-                        Xem chi tiết
-                    </a>
-                </td>
-            </tr>
-        <?php endwhile; ?>
-    </table>
-<?php else: ?>
-    <p>Chưa có phiếu nhập nào.</p>
-<?php endif; ?>
+                <?php while ($row = mysqli_fetch_assoc($result)): ?>
+                    <tr>
+                        <td><?php echo $row['purchase_id']; ?></td>
+                        <td><?php echo htmlspecialchars($row['purchase_code']); ?></td>
+                        <td><?php echo htmlspecialchars($row['supplier_name'] ?? 'Chưa có'); ?></td>
+                        <td><?php echo htmlspecialchars($row['purchase_date']); ?></td>
+                        <td>
+                            <?php if ($row['status'] === 'draft'): ?>
+                                <span class="badge-draft">Nháp</span>
+                            <?php else: ?>
+                                <span class="badge-completed">Hoàn thành</span>
+                            <?php endif; ?>
+                        </td>
+                        <td><?php echo number_format((float)$row['total_amount'], 0, ',', '.'); ?> đ</td>
+                        <td>
+                            <a href="view-purchase-order.php?id=<?php echo $row['purchase_id']; ?>" class="btn btn-secondary">
+                                Xem chi tiết
+                            </a>
+                        </td>
+                    </tr>
+                <?php endwhile; ?>
+</table>
+        <?php else: ?>
+            <p>Chưa có phiếu nhập nào.</p>
+        <?php endif; ?>
     </div>
 </body>
 </html>
