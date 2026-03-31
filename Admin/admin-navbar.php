@@ -311,9 +311,16 @@ padding: 10px;
     </a>
 
     <a href="manage-purchase-orders.php" class="<?php echo $currentPage === 'manage-purchase-orders.php' ? 'active' : ''; ?>">
-        <i class="fa-solid fa-truck-ramp-box"></i>
-        <span>Quản lý nhập hàng</span>
-    </a>
+    <i class="fa-solid fa-truck-ramp-box"></i>
+    <span>Quản lý nhập hàng</span>
+</a>
+
+<a href="add-purchase-order.php" class="<?php echo $currentPage === 'add-purchase-order.php' ? 'active' : ''; ?>">
+    <i class="fa-solid fa-file-circle-plus"></i>
+    <span>Tạo phiếu nhập</span>
+</a>
+
+
 
     <a href="manage-prices.php" class="<?php echo $currentPage === 'manage-prices.php' ? 'active' : ''; ?>">
         <i class="fa-solid fa-money-bill-trend-up"></i>
@@ -361,3 +368,4 @@ function showNotification(message, type) {
     setTimeout(() => {
         notification.classList.add('show');
     }, 100)
+}

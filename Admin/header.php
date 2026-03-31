@@ -752,6 +752,11 @@ a[href*="inventory"] .nav-count {
         <span>Inventory Statistics</span>
     <span class="nav-count"><?php echo $counts['products']; ?></span>
     </a>
+    <a href="manage-purchase-orders.php">
+    <i class="fa-solid fa-truck-ramp-box"></i>
+    <span>Quản lý nhập hàng</span>
+</a>
+
     <a href="manage-prices.php">
     <i class="fa-solid fa-money-bill-trend-up"></i>
     <span>Quản lý giá bán</span>
