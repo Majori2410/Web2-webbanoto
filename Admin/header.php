@@ -9,8 +9,7 @@ $phone_num = isset($_SESSION['phone_num']) ? htmlspecialchars($_SESSION['phone_n
 $register_date = isset($_SESSION['register_date']) ? htmlspecialchars($_SESSION['register_date']) : ''; // Removed $ from key
 $full_name = isset($_SESSION['full_name']) ? htmlspecialchars($_SESSION['full_name']) : '';
 $address = isset($_SESSION['address']) ? htmlspecialchars($_SESSION['address']) : '';
-$address = isset($_SESSION['role']) ? htmlspecialchars($_SESSION['role']) : '';
-
+$role = isset($_SESSION['role']) ? htmlspecialchars($_SESSION['role']) : '';
 if (isset($_POST["logout"])) {
     session_destroy();
     session_start();
@@ -753,14 +752,14 @@ a[href*="inventory"] .nav-count {
         <span>Inventory Statistics</span>
     <span class="nav-count"><?php echo $counts['products']; ?></span>
     </a>
+    <a href="manage-purchase-orders.php">
+    <i class="fa-solid fa-truck-ramp-box"></i>
+    <span>Quản lý nhập hàng</span>
+</a>
+
     <a href="manage-prices.php">
     <i class="fa-solid fa-money-bill-trend-up"></i>
     <span>Quản lý giá bán</span>
-    </a>
-
-    <a href="price-history.php">
-    <i class="fa-solid fa-clock-rotate-left"></i>
-    <span>Tra cứu giá lô nhập</span>
     </a>
         <div class="nav-user">
         <span class="user-greeting">

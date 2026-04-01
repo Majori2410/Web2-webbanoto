@@ -1,38 +1,44 @@
 <?php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-// final commit
-include '../User/connect.php';
 
-$product_id = (int)($_POST['product_id'] ?? 0);
-$profit_percent = (float)($_POST['profit_percent'] ?? 0);
-
-if ($product_id <= 0 || $profit_percent < 0) {
-    die("Dữ liệu không hợp lệ.");
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-$product_result = mysqli_query($connect, "
-    SELECT default_import_price
-    FROM products
-    WHERE product_id = $product_id
-");
-
-$product = mysqli_fetch_assoc($product_result);
-
-if (!$product) {
-    die("Không tìm thấy sản phẩm.");
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    header("Location: login.php");
+    exit();
 }
 
-$import_price = (float)$product['default_import_price'];
-$selling_price = $import_price + ($import_price * $profit_percent / 100);
+include_once '../User/connect.php';
 
-mysqli_query($connect, "
-    UPDATE products
-    SET 
-        profit_percent = $profit_percent,
-        price = $selling_price
-    WHERE product_id = $product_id
-");
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $product_id = isset($_POST['product_id']) ? (int)$_POST['product_id'] : 0;
+    $profit_percent = isset($_POST['profit_percent']) ? (float)$_POST['profit_percent'] : 0;
+
+    if ($product_id <= 0) {
+        header("Location: manage-prices.php");
+        exit();
+    }
+
+    $stmt = $connect->prepare("
+        UPDATE products
+        SET 
+            profit_percent = ?,
+            price = CASE
+                WHEN default_import_price > 0
+                THEN default_import_price * (1 + ? / 100)
+                ELSE price
+            END
+        WHERE product_id = ?
+    ");
+    $stmt->bind_param("ddi", $profit_percent, $profit_percent, $product_id);
+    $stmt->execute();
+
+    header("Location: manage-prices.php?success=1&tab=product");
+    exit();
+}
 
 header("Location: manage-prices.php");
 exit();
