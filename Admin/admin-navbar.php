@@ -57,7 +57,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         transform: translateX(150%);
         transition: transform 0.3s ease-in-out;
-        z-index: 1000;
+        z-index: 2000;
         font-size: 14px;
         font-weight: 500;
         display: flex;
@@ -81,24 +81,24 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         border-left: 4px solid #dc3545;
     }
 
-    .notification.info {
-        background-color: #cce5ff;
-        color: #004085;
-        border-left: 4px solid #007bff;
-    }
-
     .notification.warning {
         background-color: #fff3cd;
         color: #856404;
         border-left: 4px solid #ffc107;
     }
 
+    .notification.info {
+        background-color: #cce5ff;
+        color: #004085;
+        border-left: 4px solid #007bff;
+    }
+
     .admin-header {
-        background: linear-gradient(270deg,#40C1A8, #2C3E50, rgb(255, 255, 255));
+        background: linear-gradient(270deg, #5a6877, #2f5161, #2b7070);
         background-size: 400% 400%;
-        padding: 20px;
+        padding: 18px 20px 22px;
         text-align: center;
-        animation: gradientAnimation 30s ease-in-out infinite;
+        animation: gradientAnimation 20s ease infinite;
     }
 
     @keyframes gradientAnimation {
@@ -108,102 +108,110 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     }
 
     #logoheader {
-        max-width: 120px;
+        width: 155px;
+        max-width: 100%;
+        display: inline-block;
+        background: #fff;
+        padding: 8px;
     }
 
     .navbar {
-        background: rgba(44, 62, 80, 0.97);
-        overflow: hidden;
-        font-weight: bold;
-        padding: 10px 0;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        background: #33465a;
         display: flex;
         align-items: center;
-flex-wrap: wrap;
-        gap: 4px;
+        gap: 0;
+        flex-wrap: wrap;
+        min-height: 58px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        position: relative;
+        z-index: 1000;
     }
 
     .navbar a {
-        color: #ecf0f1;
+        color: #f3f4f6;
+        text-decoration: none;
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        text-align: center;
-        padding: 14px 20px;
-        text-decoration: none;
+        padding: 17px 22px;
+        font-weight: 700;
+        font-size: 15px;
         position: relative;
-        transition: background-color 0.3s, color 0.3s;
+        transition: 0.2s ease;
+        white-space: nowrap;
     }
 
     .navbar a:hover {
-        background-color: #34495e;
-        color: #1abc9c;
-    }
-
-    .navbar a.active {
-        background-color: #1abc9c;
+        background: #3d5166;
         color: #ffffff;
     }
 
-    .navbar a::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 50%;
-        width: 0;
-        height: 2px;
-        background: #1abc9c;
-        transition: all 0.3s ease;
-        transform: translateX(-50%);
-    }
-
-    .navbar a:hover::after {
-        width: 80%;
+    .navbar a.active {
+        background: #25c7ae;
+        color: #ffffff;
     }
 
     .nav-count {
         position: absolute;
-        top: -8px;
-        right: -8px;
-        min-width: 20px;
-        height: 20px;
+        top: 4px;
+        right: 8px;
+        min-width: 22px;
+        height: 22px;
         padding: 0 6px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: bold;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.18);
+        line-height: 1;
     }
 
-    a[href*="manage-users"] .nav-count { background: #007bff; color: white; }
-    a[href*="manage-orders"] .nav-count { background: #28a745; color: white; }
-    a[href*="manage-products"] .nav-count { background: #dc3545; color: white; }
-    a[href*="manage-inventory"] .nav-count { background: #f88e04; color: white; }
-    a[href*="best-seller"] .nav-count { background: #e5e903; color: black; }
+    a[href*="manage-users"] .nav-count {
+        background: #4f7cff;
+        color: #fff;
+    }
+
+    a[href*="manage-orders"] .nav-count {
+        background: #31c04c;
+        color: #fff;
+    }
+
+    a[href*="manage-products"] .nav-count {
+        background: #ff4f64;
+        color: #fff;
+    }
+
+    a[href*="best-seller"] .nav-count {
+        background: #d8eb2f;
+        color: #333;
+    }
+
+    a[href*="manage-inventory"] .nav-count {
+        background: #f29b1f;
+        color: #fff;
+    }
 
     .nav-user {
         margin-left: auto;
+        margin-right: 16px;
         display: flex;
         align-items: center;
-        gap: 20px;
-        margin-right: 20px;
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        padding: 8px 16px;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        max-width: 260px;
+        gap: 16px;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 10px;
+        padding: 8px 12px;
     }
 
     .user-greeting {
         color: #fff;
-        display: flex;
+        display: inline-flex;
         align-items: center;
         gap: 8px;
         font-size: 14px;
+        font-weight: 600;
     }
 
     .logout-form {
@@ -211,41 +219,39 @@ flex-wrap: wrap;
     }
 
     .logout-btn {
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: white;
-        padding: 8px 16px;
-        border-radius: 4px;
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.18);
+        color: #fff;
+        padding: 8px 14px;
+        border-radius: 8px;
         cursor: pointer;
-        display: flex;
+        display: inline-flex;
         align-items: center;
         gap: 8px;
         font-size: 14px;
-        transition: all 0.3s ease;
+        font-weight: 600;
+        transition: 0.2s ease;
     }
 
     .logout-btn:hover {
-        background: rgba(255, 255, 255, 0.2);
-        transform: translateY(-2px);
+        background: rgba(255,255,255,0.2);
+    }
+
+    @media (max-width: 1100px) {
+        .navbar {
+            justify-content: center;
+        }
+
+        .nav-user {
+            margin: 10px auto 12px;
+        }
     }
 
     @media (max-width: 768px) {
         .notification {
             width: 90%;
             top: 10px;
-            right: 50%;
-            transform: translateX(50%) translateY(-100%);
-        }
-
-        .notification.show {
-            transform: translateX(50%) translateY(0);
-        }
-
-        .nav-user {
-padding: 10px;
-            flex-direction: column;
-            gap: 10px;
-            margin: 10px;
+            right: 5%;
         }
 
         .navbar {
@@ -256,17 +262,20 @@ padding: 10px;
         .navbar a {
             justify-content: center;
         }
+
+        .nav-user {
+            flex-direction: column;
+            margin: 12px;
+        }
     }
 </style>
 
 <div id="notification" class="notification"></div>
 
 <header class="admin-header">
-    <div class="logo">
-        <a href="index.php">
-            <img id="logoheader" src="../User/dp56vcf7.png" alt="Logo">
-        </a>
-    </div>
+    <a href="index.php">
+        <img id="logoheader" src="../User/dp56vcf7.png" alt="Logo">
+    </a>
 </header>
 
 <div class="navbar">
@@ -305,22 +314,15 @@ padding: 10px;
     </a>
 
     <a href="manage-inventory.php" class="<?php echo $currentPage === 'manage-inventory.php' ? 'active' : ''; ?>">
-        <i class="fa-solid fa-chart-column"></i>
+        <i class="fa-solid fa-star"></i>
         <span>Inventory Statistics</span>
         <span class="nav-count"><?php echo $counts['products']; ?></span>
     </a>
 
     <a href="manage-purchase-orders.php" class="<?php echo $currentPage === 'manage-purchase-orders.php' ? 'active' : ''; ?>">
-    <i class="fa-solid fa-truck-ramp-box"></i>
-    <span>Quản lý nhập hàng</span>
-</a>
-
-<a href="add-purchase-order.php" class="<?php echo $currentPage === 'add-purchase-order.php' ? 'active' : ''; ?>">
-    <i class="fa-solid fa-file-circle-plus"></i>
-    <span>Tạo phiếu nhập</span>
-</a>
-
-
+        <i class="fa-solid fa-truck-ramp-box"></i>
+        <span>Quản lý nhập hàng</span>
+    </a>
 
     <a href="manage-prices.php" class="<?php echo $currentPage === 'manage-prices.php' ? 'active' : ''; ?>">
         <i class="fa-solid fa-money-bill-trend-up"></i>
@@ -332,7 +334,8 @@ padding: 10px;
             <i class="fa-regular fa-user"></i>
             <span>Hi,</span>
             <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong>
-</span>
+        </span>
+
         <form method="POST" class="logout-form">
             <button type="submit" name="logout" class="logout-btn">
                 <i class="fa-solid fa-right-from-bracket"></i>
@@ -367,5 +370,13 @@ function showNotification(message, type) {
 
     setTimeout(() => {
         notification.classList.add('show');
-    }, 100)
+    }, 100);
+
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            notification.innerHTML = '';
+        }, 300);
+    }, 5000);
 }
+</script>

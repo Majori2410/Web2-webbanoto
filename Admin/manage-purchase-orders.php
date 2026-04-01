@@ -22,20 +22,13 @@ $sql = "
 ";
 
 if ($keyword !== '') {
-    $sql .= " WHERE po.purchase_code LIKE ?";
+    $keyword_safe = mysqli_real_escape_string($connect, $keyword);
+    $sql .= " WHERE po.purchase_code LIKE '%$keyword_safe%'";
 }
 
 $sql .= " ORDER BY po.purchase_id DESC";
 
-if ($keyword !== '') {
-    $stmt = $connect->prepare($sql);
-    $like = "%" . $keyword . "%";
-    $stmt->bind_param("s", $like);
-    $stmt->execute();
-    $result = $stmt->get_result();
-} else {
-    $result = mysqli_query($connect, $sql);
-}
+$purchaseResult = mysqli_query($connect, $sql);
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -121,13 +114,6 @@ if ($keyword !== '') {
             padding:6px 10px;
             border-radius:999px;
             font-size:12px;
-font-weight:bold;
-        }
-        .top-link{
-            display:inline-block;
-            margin-bottom:18px;
-            color:#1abc9c;
-            text-decoration:none;
             font-weight:bold;
         }
         @media (max-width: 768px){
@@ -136,16 +122,13 @@ font-weight:bold;
                 overflow-x:auto;
                 white-space:nowrap;
             }
-            .toolbar{
-                flex-direction:column;
-                align-items:stretch;
-            }
         }
     </style>
 </head>
 <body>
+    <?php include 'admin-navbar.php'; ?>
+
     <div class="page">
-        <a class="top-link" href="index.php">← Quay lại Admin</a>
         <h1>Danh sách phiếu nhập</h1>
         <p>Theo dõi phiếu nhập kho, tìm kiếm và tạo phiếu nhập mới.</p>
 
@@ -164,7 +147,7 @@ font-weight:bold;
             <a href="add-purchase-order.php" class="btn btn-primary">+ Tạo phiếu nhập</a>
         </div>
 
-        <?php if ($result && mysqli_num_rows($result) > 0): ?>
+        <?php if ($purchaseResult && mysqli_num_rows($purchaseResult) > 0): ?>
             <table>
                 <tr>
                     <th>ID</th>
@@ -176,7 +159,7 @@ font-weight:bold;
                     <th>Thao tác</th>
                 </tr>
 
-                <?php while ($row = mysqli_fetch_assoc($result)): ?>
+                <?php while ($row = mysqli_fetch_assoc($purchaseResult)): ?>
                     <tr>
                         <td><?php echo $row['purchase_id']; ?></td>
                         <td><?php echo htmlspecialchars($row['purchase_code']); ?></td>
@@ -197,7 +180,7 @@ font-weight:bold;
                         </td>
                     </tr>
                 <?php endwhile; ?>
-</table>
+            </table>
         <?php else: ?>
             <p>Chưa có phiếu nhập nào.</p>
         <?php endif; ?>

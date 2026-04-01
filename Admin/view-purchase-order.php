@@ -146,6 +146,7 @@ $items_result = mysqli_query($connect, $items_sql);
     </style>
 </head>
 <body>
+    <?php include 'admin-navbar.php'; ?>
     <div class="page">
         <a class="top-link" href="manage-purchase-orders.php">← Quay lại danh sách phiếu nhập</a>
         <h1>Chi tiết phiếu nhập</h1>
@@ -197,7 +198,6 @@ $items_result = mysqli_query($connect, $items_sql);
                 <th>Sản phẩm</th>
                 <th>Số lượng</th>
                 <th>Giá nhập</th>
-                <th>% lợi nhuận</th>
                 <th>Giá bán dự kiến</th>
             </tr>
 
@@ -207,8 +207,7 @@ $items_result = mysqli_query($connect, $items_sql);
                     <td><?php echo htmlspecialchars($item['car_name']); ?></td>
                     <td><?php echo $item['quantity']; ?></td>
                     <td><?php echo number_format((float)$item['import_price'], 0, ',', '.'); ?> đ</td>
-                    <td><?php echo number_format((float)$item['profit_percent'], 2); ?>%</td>
-                    <td><?php echo number_format((float)$item['selling_price'], 0, ',', '.'); ?> đ</td>
+                </td> <td><?php echo number_format((float)$item['selling_price'], 0, ',', '.'); ?> đ</td>
                 </tr>
             <?php endwhile; ?>
         </table>

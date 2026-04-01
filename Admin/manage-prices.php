@@ -243,10 +243,18 @@ if ($keyword !== '') {
     </style>
 </head>
 <body>
+    <?php include 'admin-navbar.php'; ?>
+    <?php if (isset($_GET['success']) && $_GET['success'] == '1'): ?>
+    <script>
+        window.onload = function () {
+            showSuccess();
+        };
+    </script>
+<?php endif; ?>
+
     <div class="page">
-        <a class="top-link" href="index.php">← Quay lại Admin</a>
         <h1>Quản lý giá bán</h1>
-        <p class="section-desc">Quản lý giá bán theo sản phẩm và theo lô nhập trên cùng một trang.</p>
+        <p class="section-desc">Quản lý giá bán theo sản phẩm và theo lô nhập</p>
 
         <div class="tabs">
             <button type="button" class="tab-btn active" onclick="showTab('product-tab', this)">Theo sản phẩm</button>
@@ -389,6 +397,25 @@ if ($keyword !== '') {
             document.getElementById(tabId).classList.add('active');
             btn.classList.add('active');
         }
+        function showSuccess() {
+    const box = document.createElement("div");
+    box.innerText = "✔ Lưu thành công!";
+    box.style.position = "fixed";
+    box.style.top = "20px";
+    box.style.right = "20px";
+    box.style.background = "#1abc9c";
+    box.style.color = "#fff";
+    box.style.padding = "12px 18px";
+    box.style.borderRadius = "8px";
+    box.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)";
+    box.style.zIndex = "9999";
+
+    document.body.appendChild(box);
+
+    setTimeout(() => {
+        box.remove();
+    }, 2000);
+}
     </script>
 </body>
 </html>

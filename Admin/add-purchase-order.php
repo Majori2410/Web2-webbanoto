@@ -1,111 +1,214 @@
 <?php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-// final commit
 
-include '../User/connect.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-$message = "";
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    header("Location: login.php");
+    exit();
+}
 
-/* Lay danh sach nha cung cap */
-$suppliers = mysqli_query($connect, "SELECT * FROM suppliers ORDER BY supplier_name ASC");
+include_once '../User/connect.php';
 
-/* Lay danh sach san pham */
-$products = mysqli_query($connect, "SELECT product_id, car_name FROM products ORDER BY car_name ASC");
+$message = '';
+$messageType = '';
 
-/* Xu ly tao phieu nhap */
+/* LAY DANH SACH SAN PHAM CHO DATALIST */
+$products = [];
+$productQuery = mysqli_query($connect, "SELECT product_id, car_name FROM products ORDER BY car_name ASC");
+if ($productQuery) {
+    while ($row = mysqli_fetch_assoc($productQuery)) {
+        $products[] = $row;
+    }
+}
+
+/* TU DONG TAO MA PHIEU NHAP GOI Y */
+$nextCode = 'PN001';
+$codeQuery = mysqli_query($connect, "SELECT purchase_code FROM purchase_orders ORDER BY purchase_id DESC LIMIT 1");
+if ($codeQuery && mysqli_num_rows($codeQuery) > 0) {
+    $lastRow = mysqli_fetch_assoc($codeQuery);
+    if (preg_match('/PN(\d+)/i', $lastRow['purchase_code'], $matches)) {
+        $nextNumber = (int)$matches[1] + 1;
+        $nextCode = 'PN' . str_pad((string)$nextNumber, 3, '0', STR_PAD_LEFT);
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $purchase_code = trim($_POST['purchase_code']);
-    $supplier_id = !empty($_POST['supplier_id']) ? (int)$_POST['supplier_id'] : null;
-    $purchase_date = $_POST['purchase_date'];
-    $note = trim($_POST['note']);
+    mysqli_begin_transaction($connect);
 
-    $product_ids = $_POST['product_id'] ?? [];
-    $quantities = $_POST['quantity'] ?? [];
-    $import_prices = $_POST['import_price'] ?? [];
-    $profit_percents = $_POST['profit_percent'] ?? [];
+    try {
+        $purchase_code = trim($_POST['purchase_code'] ?? '');
+        $purchase_date = trim($_POST['purchase_date'] ?? '');
+        $supplier_name = trim($_POST['supplier_name'] ?? '');
+        $note = trim($_POST['note'] ?? '');
+        $status = 'draft';
 
-    if ($purchase_code === '' || $purchase_date === '') {
-        $message = "Vui lòng nhập mã phiếu và ngày nhập.";
-    } elseif (count($product_ids) === 0) {
-        $message = "Vui lòng thêm ít nhất 1 sản phẩm.";
-    } else {
-        mysqli_begin_transaction($connect);
+        $product_ids = $_POST['product_id'] ?? [];
+        $product_names = $_POST['product_name'] ?? [];
+        $quantities = $_POST['quantity'] ?? [];
+        $import_prices = $_POST['import_price'] ?? [];
 
-        try {
-            $total_amount = 0;
+        if ($purchase_code === '' || $purchase_date === '' || $supplier_name === '') {
+            throw new Exception('Vui lòng nhập đầy đủ mã phiếu, ngày nhập và nhà cung cấp.');
+        }
 
-            $stmt = $connect->prepare("
-                INSERT INTO purchase_orders (supplier_id, created_by, purchase_code, purchase_date, status, note, total_amount)
-                VALUES (?, NULL, ?, ?, 'draft', ?, 0)
-            ");
+        /* KIEM TRA / THEM NHA CUNG CAP */
+        $supplier_id = null;
 
-            $stmt->bind_param("isss", $supplier_id, $purchase_code, $purchase_date, $note);
-            $stmt->execute();
+        $checkSupplier = $connect->prepare("SELECT supplier_id FROM suppliers WHERE supplier_name = ?");
+        $checkSupplier->bind_param("s", $supplier_name);
+        $checkSupplier->execute();
+        $supplierResult = $checkSupplier->get_result();
 
-            $purchase_id = mysqli_insert_id($connect);
+        if ($supplierResult && $supplierResult->num_rows > 0) {
+            $supplierRow = $supplierResult->fetch_assoc();
+            $supplier_id = (int)$supplierRow['supplier_id'];
+        } else {
+            $insertSupplier = $connect->prepare("INSERT INTO suppliers (supplier_name) VALUES (?)");
+            $insertSupplier->bind_param("s", $supplier_name);
+            if (!$insertSupplier->execute()) {
+                throw new Exception('Không thể thêm nhà cung cấp mới.');
+            }
+            $supplier_id = $insertSupplier->insert_id;
+        }
 
-            $item_stmt = $connect->prepare("
-                INSERT INTO purchase_order_items (purchase_id, product_id, quantity, import_price, profit_percent, selling_price)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ");
+        /* KIEM TRA DANH SACH SAN PHAM */
+        $total_amount = 0;
+        $valid_items = [];
 
-            for ($i = 0; $i < count($product_ids); $i++) {
-                $product_id = (int)$product_ids[$i];
-                $quantity = (int)$quantities[$i];
-                $import_price = (float)$import_prices[$i];
-                $profit_percent = (float)$profit_percents[$i];
+        for ($i = 0; $i < count($product_names); $i++) {
+            $product_id = isset($product_ids[$i]) ? (int)$product_ids[$i] : 0;
+            $product_name = trim($product_names[$i] ?? '');
+            $quantity = isset($quantities[$i]) ? (int)$quantities[$i] : 0;
+            $import_price = isset($import_prices[$i]) ? (float)$import_prices[$i] : 0;
 
-                if ($product_id <= 0 || $quantity <= 0 || $import_price <= 0) {
-                    continue;
-                }
-
-                $selling_price = $import_price + ($import_price * $profit_percent / 100);
-                $line_total = $quantity * $import_price;
-                $total_amount += $line_total;
-
-                $item_stmt->bind_param(
-                    "iiiddd",
-                    $purchase_id,
-                    $product_id,
-                    $quantity,
-                    $import_price,
-                    $profit_percent,
-                    $selling_price
-                );
-                $item_stmt->execute();
-
-                mysqli_query($connect, "
-                    UPDATE products 
-                    SET default_import_price = $import_price,
-                        profit_percent = $profit_percent
-                    WHERE product_id = $product_id
-                ");
+            if ($product_name === '' && $quantity === 0 && $import_price == 0) {
+                continue;
             }
 
-            mysqli_query($connect, "
-                UPDATE purchase_orders
-                SET total_amount = $total_amount
-                WHERE purchase_id = $purchase_id
-            ");
+            if ($product_id <= 0) {
+                throw new Exception("Sản phẩm '{$product_name}' không hợp lệ. Vui lòng chọn sản phẩm từ danh sách gợi ý.");
+            }
 
-            mysqli_commit($connect);
-            header("Location: manage-purchase-orders.php");
-            exit();
-        } catch (Exception $e) {
-            mysqli_rollback($connect);
-            $message = "Lỗi khi tạo phiếu nhập: " . $e->getMessage();
+            if ($quantity <= 0) {
+                throw new Exception("Số lượng của sản phẩm '{$product_name}' phải lớn hơn 0.");
+            }
+
+            if ($import_price <= 0) {
+                throw new Exception("Giá nhập của sản phẩm '{$product_name}' phải lớn hơn 0.");
+            }
+
+            $line_total = $quantity * $import_price;
+            $total_amount += $line_total;
+
+            $valid_items[] = [
+                'product_id' => $product_id,
+                'product_name' => $product_name,
+                'quantity' => $quantity,
+                'import_price' => $import_price
+            ];
         }
+
+        if (count($valid_items) === 0) {
+            throw new Exception('Vui lòng nhập ít nhất 1 sản phẩm.');
+        }
+
+        /* THEM PHIEU NHAP */
+        $insertOrder = $connect->prepare("
+            INSERT INTO purchase_orders (
+                purchase_code,
+                supplier_id,
+                purchase_date,
+                note,
+                status,
+                total_amount
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        ");
+
+        $insertOrder->bind_param(
+            "sisssd",
+            $purchase_code,
+            $supplier_id,
+            $purchase_date,
+            $note,
+            $status,
+            $total_amount
+        );
+
+        if (!$insertOrder->execute()) {
+            throw new Exception('Không thể lưu phiếu nhập.');
+        }
+
+        $purchase_id = $insertOrder->insert_id;
+
+        /* THEM CHI TIET PHIEU NHAP
+           profit_percent de 0, selling_price = import_price
+           vi % loi nhuan chi quan ly o trang Quan ly gia ban
+        */
+        $insertItem = $connect->prepare("
+            INSERT INTO purchase_order_items (
+                purchase_id,
+                product_id,
+                quantity,
+                import_price,
+                profit_percent,
+                selling_price
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        ");
+
+        foreach ($valid_items as $item) {
+            $profit_percent = 0;
+            $selling_price = $item['import_price'];
+
+            $insertItem->bind_param(
+                "iiiddd",
+                $purchase_id,
+                $item['product_id'],
+                $item['quantity'],
+                $item['import_price'],
+                $profit_percent,
+                $selling_price
+            );
+
+            if (!$insertItem->execute()) {
+                throw new Exception("Không thể lưu sản phẩm '{$item['product_name']}'.");
+            }
+        }
+
+        mysqli_commit($connect);
+
+        $message = 'Tạo phiếu nhập thành công.';
+        $messageType = 'success';
+
+        /* RESET FORM */
+        $nextCode = 'PN001';
+        $generatedNext = mysqli_query($connect, "SELECT purchase_code FROM purchase_orders ORDER BY purchase_id DESC LIMIT 1");
+        if ($generatedNext && mysqli_num_rows($generatedNext) > 0) {
+            $lastRow = mysqli_fetch_assoc($generatedNext);
+            if (preg_match('/PN(\d+)/i', $lastRow['purchase_code'], $matches)) {
+                $nextNumber = (int)$matches[1] + 1;
+                $nextCode = 'PN' . str_pad((string)$nextNumber, 3, '0', STR_PAD_LEFT);
+            }
+        }
+
+        $_POST = [];
+
+    } catch (Exception $e) {
+        mysqli_rollback($connect);
+        $message = $e->getMessage();
+        $messageType = 'error';
     }
 }
 ?>
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thêm phiếu nhập</title>
+    <title>Tạo phiếu nhập</title>
     <link rel="icon" href="../User/dp56vcf7.png" type="image/png">
     <style>
         body{
@@ -113,6 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-family: Arial, sans-serif;
             background:#f4f6f9;
         }
+
         .page{
             max-width:1200px;
             margin:30px auto;
@@ -121,10 +225,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius:14px;
             box-shadow:0 8px 24px rgba(0,0,0,0.08);
         }
+
         h1{
             margin-top:0;
             color:#2c3e50;
+            margin-bottom:20px;
         }
+
         .top-link{
             display:inline-block;
             margin-bottom:18px;
@@ -132,278 +239,436 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             text-decoration:none;
             font-weight:bold;
         }
+
+        .message{
+            padding:14px 16px;
+            border-radius:10px;
+            margin-bottom:18px;
+            font-weight:600;
+        }
+
+        .message.success{
+            background:#dcfce7;
+            color:#166534;
+        }
+
+        .message.error{
+            background:#fee2e2;
+            color:#991b1b;
+        }
+
         .form-grid{
             display:grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap:16px;
-            margin-bottom:20px;
+            grid-template-columns: 1fr 1fr;
+            gap:18px 20px;
+            margin-bottom:18px;
         }
+
         .form-group{
             display:flex;
             flex-direction:column;
             gap:8px;
         }
-        .form-group label{
-            font-weight:bold;
-            color:#2c3e50;
-        }
-        .form-group input,
-        .form-group select,
-        .form-group textarea{
-            padding:12px;
-            border:1px solid #ccc;
-            border-radius:8px;
-            font-size:14px;
-        }
-        .form-group textarea{
-            min-height:100px;
-            resize:vertical;
-        }
-        .full{
+
+        .form-group.full{
             grid-column:1 / -1;
         }
-        .items-box{
-            margin-top:20px;
+
+        label{
+            font-weight:700;
+            color:#334155;
+            font-size:14px;
         }
+
+        .form-input{
+            width:100%;
+            height:44px;
+            padding:10px 12px;
+            border:1px solid #d1d5db;
+            border-radius:8px;
+            font-size:14px;
+            box-sizing:border-box;
+            outline:none;
+            background:#fff;
+        }
+
+        .form-input:focus{
+            border-color:#1abc9c;
+            box-shadow:0 0 0 3px rgba(26,188,156,0.15);
+        }
+
+        textarea.form-input{
+            height:110px;
+            resize:vertical;
+            line-height:1.5;
+            padding-top:12px;
+        }
+
+        .section-title{
+            font-size:22px;
+            color:#2c3e50;
+            margin:24px 0 12px;
+            font-weight:700;
+        }
+
         table{
             width:100%;
             border-collapse:collapse;
             margin-top:10px;
         }
+
         th, td{
-            border-bottom:1px solid #ddd;
             padding:12px;
+            border-bottom:1px solid #e5e7eb;
             text-align:left;
-            vertical-align: top;
+            vertical-align:middle;
         }
+
         th{
             background:#2c3e50;
-            color:white;
+            color:#fff;
         }
+
+        .input-wrap{
+            position:relative;
+            width:100%;
+        }
+
+        .product-input{
+            width:100%;
+            min-width:320px;
+            padding-right:36px;
+        }
+
+        .small-input{
+            width:100%;
+            min-width:140px;
+        }
+
+        .input-icon{
+            position:absolute;
+            top:50%;
+            right:12px;
+            transform:translateY(-50%);
+            color:#64748b;
+            font-size:12px;
+            pointer-events:none;
+            display:block !important;
+            z-index:2;
+        }
+
+        input[list]::-webkit-calendar-picker-indicator{
+            display:none !important;
+            opacity:0 !important;
+        }
+
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            opacity:1;
+            margin:0;
+        }
+
+        input[type="number"] {
+            appearance:auto;
+            -webkit-appearance:auto;
+            -moz-appearance:auto;
+        }
+
         .btn{
             padding:10px 16px;
             border:none;
             border-radius:8px;
             cursor:pointer;
-            font-weight:bold;
+            font-weight:700;
+            transition:0.2s ease;
         }
+
         .btn-primary{
             background:#1abc9c;
-            color:white;
+            color:#fff;
         }
+
         .btn-primary:hover{
             background:#16a085;
         }
-        .btn-danger{
-            background:#e74c3c;
-            color:white;
-        }
-        .btn-danger:hover{
-            background:#c0392b;
-        }
+
         .btn-secondary{
-            background:#ecf0f1;
-            color:#2c3e50;
+            background:#e5e7eb;
+            color:#334155;
         }
-        .message{
-            margin-bottom:15px;
-            padding:12px 16px;
-            border-radius:8px;
-            background:#fdecea;
-            color:#b42318;
+
+        .btn-secondary:hover{
+            background:#d1d5db;
         }
+
+        .btn-danger{
+            background:#ef4444;
+            color:#fff;
+        }
+
+        .btn-danger:hover{
+            background:#dc2626;
+        }
+
         .actions{
-            margin-top:20px;
             display:flex;
             gap:12px;
+            margin-top:18px;
             flex-wrap:wrap;
         }
-        .product-search{
-            width:100%;
-            box-sizing:border-box;
-            padding:8px;
-            margin-bottom:6px;
-            border:1px solid #ccc;
-            border-radius:6px;
-            font-size:14px;
+
+        .hint{
+            color:#6b7280;
+            font-size:13px;
+            margin-top:4px;
         }
-        .product-select{
-            width:100%;
-            box-sizing:border-box;
-            padding:8px;
-            border:1px solid #ccc;
-            border-radius:6px;
-            font-size:14px;
-        }
+
         @media (max-width: 768px){
             .form-grid{
-                grid-template-columns: 1fr;
+                grid-template-columns:1fr;
             }
+
             table{
                 display:block;
                 overflow-x:auto;
                 white-space:nowrap;
             }
+
+            .product-input{
+                min-width:260px;
+            }
         }
     </style>
 </head>
 <body>
+    <?php include 'admin-navbar.php'; ?>
+
     <div class="page">
         <a class="top-link" href="manage-purchase-orders.php">← Quay lại danh sách phiếu nhập</a>
         <h1>Tạo phiếu nhập</h1>
 
-        <?php if ($message !== ""): ?>
-            <div class="message"><?php echo $message; ?></div>
+        <?php if ($message !== ''): ?>
+            <div class="message <?php echo $messageType; ?>">
+                <?php echo htmlspecialchars($message); ?>
+            </div>
         <?php endif; ?>
 
-        <form method="POST">
+        <form method="POST" action="">
             <div class="form-grid">
                 <div class="form-group">
                     <label>Mã phiếu nhập</label>
-                    <input type="text" name="purchase_code" placeholder="VD: PN001" required>
+                    <input
+                        type="text"
+                        name="purchase_code"
+                        class="form-input"
+                        value="<?php echo htmlspecialchars($_POST['purchase_code'] ?? $nextCode); ?>"
+                        placeholder="VD: PN001"
+                        required
+                    >
                 </div>
 
                 <div class="form-group">
                     <label>Ngày nhập</label>
-                    <input type="date" name="purchase_date" required>
+                    <input
+                        type="date"
+                        name="purchase_date"
+                        class="form-input"
+                        value="<?php echo htmlspecialchars($_POST['purchase_date'] ?? date('Y-m-d')); ?>"
+                        required
+                    >
                 </div>
 
-                <div class="form-group">
+                <div class="form-group full">
                     <label>Nhà cung cấp</label>
-                    <select name="supplier_id">
-                        <option value="">-- Chọn nhà cung cấp --</option>
-                        <?php while ($supplier = mysqli_fetch_assoc($suppliers)): ?>
-                            <option value="<?php echo $supplier['supplier_id']; ?>">
-                                <?php echo htmlspecialchars($supplier['supplier_name']); ?>
-                            </option>
-                        <?php endwhile; ?>
-                    </select>
+                    <input
+                        type="text"
+                        name="supplier_name"
+                        class="form-input"
+                        placeholder="Nhập tên nhà cung cấp"
+                        value="<?php echo htmlspecialchars($_POST['supplier_name'] ?? ''); ?>"
+                        required
+                    >
+                    <div class="hint">Nếu nhà cung cấp chưa có trong hệ thống, hệ thống sẽ tự thêm mới.</div>
                 </div>
 
                 <div class="form-group full">
                     <label>Ghi chú</label>
-                    <textarea name="note" placeholder="Nhập ghi chú nếu có..."></textarea>
+                    <textarea
+                        name="note"
+                        class="form-input"
+                        placeholder="Nhập ghi chú nếu có..."
+                    ><?php echo htmlspecialchars($_POST['note'] ?? ''); ?></textarea>
                 </div>
             </div>
 
-            <div class="items-box">
-                <h3>Danh sách sản phẩm nhập</h3>
-                <table id="itemsTable">
-                    <thead>
-                        <tr>
-                            <th>Sản phẩm</th>
-                            <th>Số lượng</th>
-                            <th>Giá nhập</th>
-                            <th>% lợi nhuận</th>
-                            <th>Xóa</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>
-                                <input 
-                                    type="text" 
-                                    placeholder="Tìm sản phẩm..." 
-                                    onkeyup="filterProducts(this)" 
-                                    class="product-search"
+            <div class="section-title">Danh sách sản phẩm nhập</div>
+
+            <table id="productTable">
+                <thead>
+                    <tr>
+                        <th>Sản phẩm</th>
+                        <th>Số lượng</th>
+                        <th>Giá nhập</th>
+                        <th>Xóa</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <input type="hidden" name="product_id[]" class="product-id-hidden">
+                            <div class="input-wrap">
+                                <input
+                                    type="text"
+                                    name="product_name[]"
+                                    class="form-input product-input product-name-input"
+                                    list="product-list"
+                                    placeholder="Tìm sản phẩm..."
+                                    required
                                 >
+                                <span class="input-icon">▼</span>
+                            </div>
+                        </td>
+                        <td>
+                            <input
+                                type="number"
+                                name="quantity[]"
+                                class="form-input small-input"
+                                min="1"
+                                placeholder="Số lượng"
+                                required
+                            >
+                        </td>
+                        <td>
+                            <input
+                                type="number"
+                                name="import_price[]"
+                                class="form-input small-input"
+                                min="0"
+                                step="0.01"
+                                placeholder="Giá nhập"
+                                required
+                            >
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-danger" onclick="removeRow(this)">Xóa</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
 
-                                <select name="product_id[]" class="product-select" required>
-                                    <option value="">-- Chọn sản phẩm --</option>
-                                    <?php
-                                    mysqli_data_seek($products, 0);
-                                    while ($product = mysqli_fetch_assoc($products)):
-                                    ?>
-                                        <option value="<?php echo $product['product_id']; ?>">
-                                            <?php echo htmlspecialchars($product['car_name']); ?>
-                                        </option>
-                                    <?php endwhile; ?>
-                                </select>
-                            </td>
-                            <td><input type="number" name="quantity[]" min="1" required></td>
-                            <td><input type="number" step="0.01" name="import_price[]" min="0" required></td>
-                            <td><input type="number" step="0.01" name="profit_percent[]" min="0" value="10"></td>
-                            <td><button type="button" class="btn btn-danger" onclick="removeRow(this)">Xóa</button></td>
-                        </tr>
-                    </tbody>
-                </table>
+            <datalist id="product-list">
+                <?php foreach ($products as $product): ?>
+                    <option
+                        value="<?php echo htmlspecialchars($product['car_name']); ?>"
+                        data-id="<?php echo (int)$product['product_id']; ?>"
+                    ></option>
+                <?php endforeach; ?>
+            </datalist>
 
-                <div class="actions">
-                    <button type="button" class="btn btn-secondary" onclick="addRow()">+ Thêm sản phẩm</button>
-                    <button type="submit" class="btn btn-primary">Lưu phiếu nhập</button>
-                </div>
+            <div class="actions">
+                <button type="button" class="btn btn-secondary" onclick="addRow()">+ Thêm sản phẩm</button>
+                <button type="submit" class="btn btn-primary">Lưu phiếu nhập</button>
             </div>
         </form>
     </div>
 
     <script>
-        const productOptions = `
-            <input 
-                type="text" 
-                placeholder="Tìm sản phẩm..." 
-                onkeyup="filterProducts(this)" 
-                class="product-search"
-            >
+        function bindProductInputEvents(scope = document) {
+            const inputs = scope.querySelectorAll('.product-name-input');
 
-            <select name="product_id[]" class="product-select" required>
-                <option value="">-- Chọn sản phẩm --</option>
-                <?php
-                mysqli_data_seek($products, 0);
-                while ($product = mysqli_fetch_assoc($products)):
-                ?>
-                <option value="<?php echo $product['product_id']; ?>">
-                    <?php echo htmlspecialchars($product['car_name']); ?>
-                </option>
-                <?php endwhile; ?>
-            </select>
-        `;
+            inputs.forEach(input => {
+                input.addEventListener('input', function () {
+                    const row = this.closest('tr');
+                    const hiddenInput = row.querySelector('.product-id-hidden');
+                    const value = this.value.trim();
+                    const options = document.querySelectorAll('#product-list option');
+
+                    hiddenInput.value = '';
+
+                    options.forEach(option => {
+                        if (option.value === value) {
+                            hiddenInput.value = option.getAttribute('data-id');
+                        }
+                    });
+                });
+
+                input.addEventListener('change', function () {
+                    const row = this.closest('tr');
+                    const hiddenInput = row.querySelector('.product-id-hidden');
+                    const value = this.value.trim();
+                    const options = document.querySelectorAll('#product-list option');
+
+                    hiddenInput.value = '';
+
+                    options.forEach(option => {
+                        if (option.value === value) {
+                            hiddenInput.value = option.getAttribute('data-id');
+                        }
+                    });
+                });
+            });
+        }
 
         function addRow() {
-            const tableBody = document.querySelector('#itemsTable tbody');
-            const row = document.createElement('tr');
+            const tbody = document.querySelector('#productTable tbody');
+            const tr = document.createElement('tr');
 
-            row.innerHTML = `
+            tr.innerHTML = `
                 <td>
-                    ${productOptions}
+                    <input type="hidden" name="product_id[]" class="product-id-hidden">
+                    <div class="input-wrap">
+                        <input
+                            type="text"
+                            name="product_name[]"
+                            class="form-input product-input product-name-input"
+                            list="product-list"
+                            placeholder="Tìm sản phẩm..."
+                            required
+                        >
+                        <span class="input-icon">▼</span>
+                    </div>
                 </td>
-                <td><input type="number" name="quantity[]" min="1" required></td>
-                <td><input type="number" step="0.01" name="import_price[]" min="0" required></td>
-                <td><input type="number" step="0.01" name="profit_percent[]" min="0" value="10"></td>
-                <td><button type="button" class="btn btn-danger" onclick="removeRow(this)">Xóa</button></td>
+                <td>
+                    <input
+                        type="number"
+                        name="quantity[]"
+                        class="form-input small-input"
+                        min="1"
+                        placeholder="Số lượng"
+                        required
+                    >
+                </td>
+                <td>
+                    <input
+                        type="number"
+                        name="import_price[]"
+                        class="form-input small-input"
+                        min="0"
+                        step="0.01"
+                        placeholder="Giá nhập"
+                        required
+                    >
+                </td>
+                <td>
+                    <button type="button" class="btn btn-danger" onclick="removeRow(this)">Xóa</button>
+                </td>
             `;
 
-            tableBody.appendChild(row);
+            tbody.appendChild(tr);
+            bindProductInputEvents(tr);
         }
 
         function removeRow(button) {
-            const tableBody = document.querySelector('#itemsTable tbody');
-            if (tableBody.rows.length === 1) {
+            const tbody = document.querySelector('#productTable tbody');
+            if (tbody.rows.length === 1) {
                 alert('Phiếu nhập phải có ít nhất 1 sản phẩm.');
                 return;
             }
+
             button.closest('tr').remove();
         }
 
-        function filterProducts(input) {
-            const filter = input.value.toLowerCase();
-            const select = input.nextElementSibling;
-
-            if (!select) return;
-
-            for (let i = 0; i < select.options.length; i++) {
-                const option = select.options[i];
-                const text = option.text.toLowerCase();
-
-                option.style.display = text.includes(filter) ? "" : "none";
-            }
-
-            if (select.selectedIndex > 0) {
-                const selectedText = select.options[select.selectedIndex].text.toLowerCase();
-                if (!selectedText.includes(filter)) {
-                    select.selectedIndex = 0;
-                }
-            }
-        }
+        bindProductInputEvents();
     </script>
 </body>
 </html>
