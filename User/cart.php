@@ -192,9 +192,6 @@ checkCartItemsStatus($connect);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Giỏ hàng</title>
-    <!-- <link rel="stylesheet" href="style.css"> -->
-    <!-- <link rel="stylesheet" href="cart.css"> -->
-
     <script src="cart.js"></script>
     <link rel="icon" href="dp56vcf7.png" type="image/png">
     <script src="https://kit.fontawesome.com/8341c679e5.js" crossorigin="anonymous"></script>
@@ -261,7 +258,6 @@ checkCartItemsStatus($connect);
 
     /* Cart Content Layout */
     .container {
-        /* max-width: 1200px; */
         margin: 0 auto;
         padding: 0 20px;
     }
@@ -434,42 +430,6 @@ checkCartItemsStatus($connect);
         color: black;
     }
 </style>
-<!-- <style>
-.cart-title {
-    text-align: center;
-    padding: 25px 0;
-    margin: 0 0 20px 0;
-    color: #2c3e50;
-    font-size: 2rem;
-    font-weight: 600;
-    background-color: #fff;
-    position: relative;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    border-radius: 8px;
-}
-
-.cart-title::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60px;
-    height: 3px;
-    background-color: var(--cart-primary);
-    border-radius: 2px;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-.cart {
-    padding: 20px 0 40px;
-    background-color: #efefef;
-}</style> -->
 <style>
     h1 {
         position: relative;
@@ -479,196 +439,18 @@ checkCartItemsStatus($connect);
         font-weight: bold;
         color: #666;
         font-size: 40px;
-        /* color: #080808; */
         -webkit-transition: all 0.4s ease 0s;
         -o-transition: all 0.4s ease 0s;
         transition: all 0.4s ease 0s;
         height: 50px;
     }
 
-    /* h1 span {
-        display: block;
-        font-size: 0.5em;
-        line-height: 1.3;
-    } */
-
     h1 em {
         font-style: normal;
         font-weight: 600;
     }
-
-    /* .eight {
-        height: 100px;
-        background-color: #efefef;
-
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    }
-
-    .eight h1 {
-        padding-top: 30px;
-        text-align: center;
-
-        text-transform: uppercase;
-        font-size: 26px;
-        letter-spacing: 1px;
-
-        display: grid;
-        grid-template-columns: 1fr auto 1fr;
-        grid-template-rows: 16px 0;
-        grid-gap: 22px;
-    }
-
-    .eight h1:after,
-    .eight h1:before {
-        content: " ";
-        display: block;
-        border-bottom: 2px solid #ccc;
-        background-color: #efefef;
-    } */
-</style>
-<!-- <style>
-        /* Update Title Container */
-    .eight {
-        height: 100px;
-        background-color: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        margin: 20px auto;
-        max-width: 1200px;
-    }
-
-    /* Update Title Styling */
-    .eight h1 {
-        position: relative;
-        padding: 30px 0;
-        margin: 0;
-        font-family: Arial, Helvetica, sans-serif;
-        font-weight: 600;
-        color: #2c3e50;
-        font-size: 26px;
-        text-align: center;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        transition: all 0.3s ease;
-    }
-
-    /* Add underline accent */
-    .eight h1::after {
-        content: '';
-        position: absolute;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 60px;
-        height: 3px;
-        background-color: var(--cart-primary);
-        border-radius: 2px;
-    }
-
-    /* Remove old decorative lines */
-    .eight h1:before {
-        content: none;
-    }
-
-    /* Container spacing */
-    .container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 20px;
-    }
-
-    /* Section spacing */
-    .cart {
-        padding: 20px 0 40px;
-        background-color: #efefef;
-    } -->
 </style>
 <style>
-    /* Update Title Container */
-    /* .eight {
-        height: 100px;
-        background-color: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        margin: 20px auto;
-        /* max-width: 1200px; 
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    /* Update Title Styling 
-    .eight h1 {
-        position: relative;
-        padding: 0;
-        margin: 0;
-        font-family: Arial, Helvetica, sans-serif;
-        font-weight: 600;
-        color: rgb(163, 163, 163);
-        font-size: 26px;
-        text-align: center;
-        text-transform: uppercase;
-        letter-spacing: 5px;
-        transition: all 0.3s ease;
-    }
-
-    /* Add underline accent 
-    .eight h1::after {
-        content: '';
-        position: absolute;
-        bottom: -15px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 60px;
-        height: 3px;
-        background-color: var(--cart-primary);
-        border-radius: 2px;
-    }
-
-    /* Update Title Container 
-    .eight {
-        height: 100px;
-        background-color: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        margin: 20px auto;
-        /* max-width: 1200px; 
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    /* Update Title Styling 
-    .eight h1 {
-        position: relative;
-        padding: 0;
-        margin: 0;
-        font-family: Arial, Helvetica, sans-serif;
-        font-weight: 600;
-        color: rgb(0, 0, 0);
-        font-size: 26px;
-        text-align: center;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        transition: all 0.3s ease;
-    }
-
-    /* Fix underline spacing 
-    */
-    .eight h1::after {
-        content: '';
-        position: absolute;
-        bottom: -8px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 60px;
-        height: 3px;
-        background-color: var(--cart-primary);
-        border-radius: 2px;
-    } 
-
     .cart-content-left a {
         text-decoration: none;
         color: gray;
@@ -680,31 +462,23 @@ checkCartItemsStatus($connect);
     /* Update the cart image styling */
     .cart-content-left img {
         width: 150px;
-        /* Slightly reduced from 180px */
         height: 100px;
-        /* Reduced from 120px */
         object-fit: contain;
-        /* Changed from cover to contain */
         border-radius: 8px;
         transition: transform 0.3s ease;
         background-color: #f8f9fa;
-        /* Light background for transparent images */
         padding: 5px;
-        /* Add some padding */
     }
 
     .cart-content-left img:hover {
         transform: scale(1.1);
     }
 
-    /* Adjust the td padding to accommodate the image */
     .cart-content-left td:first-child {
         padding: 10px;
         width: 160px;
-        /* Fixed width for image column */
     }
 
-    /* Add icons styling */
     .cart-icon {
         margin-right: 8px;
         color: #666;
@@ -722,7 +496,6 @@ checkCartItemsStatus($connect);
         color: #17a2b8;
     }
 
-    /* Style for empty cart message */
     .empty-cart-message {
         text-align: center;
         padding: 40px 0;
@@ -736,11 +509,9 @@ checkCartItemsStatus($connect);
 
     #cart-icon {
         padding-top: 20px;
-
     }
 </style>
 <style>
-    /* Update quantity control styling */
     .quantity-control {
         display: flex;
         align-items: center;
@@ -776,7 +547,6 @@ checkCartItemsStatus($connect);
         margin: 0 5px;
     }
 
-    /* Center delete button */
     .remove-item {
         display: flex;
         align-items: center;
@@ -794,10 +564,8 @@ checkCartItemsStatus($connect);
     .remove-item:hover {
         background: #dc3545;
         color: white;
-        /* transform: rotate(90deg); */
     }
 
-    /* Delete all button */
     .delete-all-btn {
         display: flex;
         align-items: center;
@@ -824,7 +592,6 @@ checkCartItemsStatus($connect);
     }
 </style>
 <style>
-    /* Checkbox styling */
     .product-checkbox {
         width: 18px;
         height: 18px;
@@ -832,7 +599,6 @@ checkCartItemsStatus($connect);
         accent-color: #007bff;
     }
 
-    /* Delete selected button */
     .delete-selected-btn {
         display: flex;
         align-items: center;
@@ -859,7 +625,6 @@ checkCartItemsStatus($connect);
         margin-bottom: 15px;
     }
 
-    /* Confirmation Modal */
     .confirm-modal {
         display: none;
         position: fixed;
@@ -903,7 +668,6 @@ checkCartItemsStatus($connect);
     }
 </style>
 <style>
-    /* Update the delete buttons container styling */
     .delete-buttons-container {
         display: flex;
         justify-content: flex-end;
@@ -914,14 +678,12 @@ checkCartItemsStatus($connect);
         z-index: 1;
     }
 
-    /* Style table layout */
     .cart-content-left table {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
     }
 
-    /* Style checkbox column */
     .cart-content-left th:first-child,
     .cart-content-left td:first-child {
         width: 50px;
@@ -930,7 +692,6 @@ checkCartItemsStatus($connect);
         vertical-align: middle;
     }
 
-    /* Style checkboxes */
     .product-checkbox {
         width: 18px;
         height: 18px;
@@ -940,7 +701,6 @@ checkCartItemsStatus($connect);
         display: block;
     }
 
-    /* Style table header */
     .cart-content-left th {
         background-color: #f8f9fa;
         padding: 15px;
@@ -951,14 +711,12 @@ checkCartItemsStatus($connect);
         text-align: center;
     }
 
-    /* Align other columns */
     .cart-content-left td {
         text-align: center;
         vertical-align: middle;
         padding: 15px;
     }
 
-    /* Style buttons */
     .delete-selected-btn,
     .delete-all-btn {
         min-width: 120px;
@@ -1035,9 +793,6 @@ checkCartItemsStatus($connect);
     }
 </style>
 <style>
-    /* Style for empty cart message and button */
-
-
     .empty-cart-message i {
         font-size: 48px;
         color: #6c757d;
@@ -1080,16 +835,11 @@ checkCartItemsStatus($connect);
         margin: 0;
     }
 
-    /* Update the colspan for empty cart message */
     .cart-content-left td[colspan="5"] {
         padding: 40px 20px;
     }
 </style>
 <style>
-    /* Update the delete buttons container styling */
-
-
-    /* Style buttons */
     .delete-selected-btn,
     .delete-all-btn {
         min-width: 120px;
@@ -1124,7 +874,6 @@ checkCartItemsStatus($connect);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
-    /* Update cart content left padding */
     .cart-content-left {
         flex: 3;
         background: #fff;
@@ -1151,9 +900,6 @@ checkCartItemsStatus($connect);
         border-top: 1px solid #e9ecef;
         background-color: #f8f9fa;
         border-radius: 0 0 12px 12px;
-        /* margin-bottom:0; */
-        /* margin-left:40 px; */
-        /* margin-bottom:40 px; */
     }
 
     .container {
@@ -1162,7 +908,6 @@ checkCartItemsStatus($connect);
     }
 </style>
 <style>
-    /* Add this to your existing CSS */
     .cart-content-left td:nth-child(4) {
         color: #666;
         font-weight: 500;
@@ -1170,37 +915,30 @@ checkCartItemsStatus($connect);
         font-size: 0.9em;
     }
 
-    /* Update table column widths */
     .cart-content-left th:nth-child(1) {
         width: 50px;
     }
 
-    /* Checkbox */
     .cart-content-left th:nth-child(2) {
         width: 160px;
     }
 
-    /* Image */
     .cart-content-left th:nth-child(3) {
         width: auto;
     }
 
-    /* Name */
     .cart-content-left th:nth-child(4) {
         width: 120px;
     }
 
-    /* Brand */
     .cart-content-left th:nth-child(5) {
         width: 120px;
     }
 
-    /* Quantity */
     .cart-content-left th:nth-child(6) {
         width: 120px;
     }
 
-    /* Price */
     .cart-content-left th:nth-child(7) {
         width: 80px;
     }
@@ -1210,7 +948,6 @@ checkCartItemsStatus($connect);
     }
 </style>
 <style>
-    /* Update quantity control styling */
     .quantity-control {
         display: flex;
         align-items: center;
@@ -1258,7 +995,6 @@ checkCartItemsStatus($connect);
         margin: 0;
     }
 
-    /* Update delete buttons container */
     .delete-buttons-container {
         display: flex;
         justify-content: flex-end;
@@ -1307,7 +1043,6 @@ checkCartItemsStatus($connect);
 </style>
 
 <style>
-    /* Progress Bar Section */
     .cart-top-wrap {
         display: flex;
         justify-content: center;
@@ -1335,7 +1070,6 @@ checkCartItemsStatus($connect);
         transform: translateY(-50%);
         height: 2px;
         width: 0%;
-        /* Will be updated based on progress */
         background-color: #4CAF50;
         transition: width 0.3s ease;
         z-index: 1;
@@ -1384,7 +1118,6 @@ checkCartItemsStatus($connect);
         color: inherit;
     }
 
-    /* Progress Line */
     .cart-top-cart.active~.cart-top-address .cart-top-item,
     .cart-top-cart.active~.cart-top-payment .cart-top-item {
         border-color: #ddd;
@@ -1405,13 +1138,11 @@ checkCartItemsStatus($connect);
     }
 </style>
 <style>
-    /* Add/update this CSS */
     .cart-content-right table {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
         table-layout: fixed;
-        /* Add this to enforce column widths */
     }
 
     .cart-content-right td.thr {
@@ -1431,7 +1162,6 @@ checkCartItemsStatus($connect);
         white-space: nowrap;
     }
 
-    /* Style for the header row */
     .cart-content-right th {
         padding: 15px;
         text-align: center;
@@ -1442,7 +1172,6 @@ checkCartItemsStatus($connect);
         font-weight: 600;
     }
 
-    /* Icon alignment in thr cells */
     .cart-content-right td.thr i {
         margin-right: 8px;
         width: 16px;
@@ -1497,7 +1226,6 @@ checkCartItemsStatus($connect);
     filter: grayscale(100%);
 }
 
-/* Tooltip styles */
 .cart-warning {
     position: relative;
     display: inline-block;
@@ -1595,8 +1323,6 @@ checkCartItemsStatus($connect);
         opacity: 0;
     }
 }
-/* Updated Title Styles */
-/* Update the title styles */
 .eight {
     height: auto;
     background-color: white;
@@ -1620,11 +1346,8 @@ checkCartItemsStatus($connect);
     letter-spacing: 1px;
     margin: 0;
     padding: 0;
-    /* background: linear-gradient(90deg,rgb(255, 255, 255),#6D6E71, #0056B3); */
     background-size: 200% auto;
-    color: #2c3e50; /* Fallback color */
-    /* animation: gradientText 3s linear infinite; */
-    /* height:32px; */
+    color: #2c3e50;
 }
 
 .eight h1 span {
@@ -1634,13 +1357,11 @@ checkCartItemsStatus($connect);
     animation: revealLetters 0.5s ease forwards;
 }
 
-/* Gradient Animation */
 @keyframes gradientText {
     0% { background-position: 0% 50%; }
     100% { background-position: 200% 50%; }
 }
 
-/* Letter Animation */
 @keyframes revealLetters {
     to {
         opacity: 1;
@@ -1648,11 +1369,11 @@ checkCartItemsStatus($connect);
     }
 }
 
-    @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-    }
-/* Highlight Effect */
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
 .eight::before {
     content: '';
     position: absolute;
@@ -1672,12 +1393,11 @@ checkCartItemsStatus($connect);
 @keyframes highlightSweep {
     100% { left: 200%; }
 }
-/* Cart Page Dark Theme */
+
 body.dark-theme .cart {
     background-color: #33475C;
 }
 
-/* Progress Bar */
 body.dark-theme .cart-top {
     background-color: #445566;
 }
@@ -1700,7 +1420,6 @@ body.dark-theme .cart-top-item.active i {
     color: #fff;
 }
 
-/* Cart Title */
 body.dark-theme .eight {
     background-color: #2c3e50;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
@@ -1710,7 +1429,6 @@ body.dark-theme .eight h1 {
     color: #ecf0f1;
 }
 
-/* Cart Content */
 body.dark-theme .cart-content-left {
     background-color: #2c3e50;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
@@ -1727,13 +1445,11 @@ body.dark-theme .cart-content-left td {
     color: #ecf0f1;
 }
 
-/* Product Images */
 body.dark-theme .cart-content-left img {
     background-color: #34495e;
     border: 1px solid #445566;
 }
 
-/* Links */
 body.dark-theme .cart-content-left a {
     color: #3498db;
 }
@@ -1742,7 +1458,6 @@ body.dark-theme .cart-content-left a:hover {
     color: #2980b9;
 }
 
-/* Quantity Controls */
 body.dark-theme .quantity-control {
     background-color: #34495e;
     border-color: #445566;
@@ -1759,12 +1474,10 @@ body.dark-theme .quantity-input {
     border-color: #445566;
 }
 
-/* Price */
 body.dark-theme #price {
     color: #2ecc71;
 }
 
-/* Delete Buttons */
 body.dark-theme .delete-buttons-container {
     background: #34495e;
     border-top-color: #445566;
@@ -1783,7 +1496,6 @@ body.dark-theme .delete-all-btn:hover {
     color: #ecf0f1;
 }
 
-/* Cart Summary */
 body.dark-theme .cart-content-right {
     background-color: #2c3e50;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
@@ -1808,7 +1520,6 @@ body.dark-theme .cart-content-right i {
     color: #3498db;
 }
 
-/* Action Buttons */
 body.dark-theme #continue-shopping {
     background-color: #34495e;
     color: #ecf0f1;
@@ -1827,7 +1538,6 @@ body.dark-theme #checkout-button:hover {
     background-color: #2980b9;
 }
 
-/* Empty Cart Message */
 body.dark-theme .empty-cart-message {
     color: #bdc3c7;
 }
@@ -1836,7 +1546,6 @@ body.dark-theme .empty-cart-message i {
     color: #34495e;
 }
 
-/* Status Badges */
 body.dark-theme .status-badge.status-hidden {
     background-color: #7f8c8d;
 }
@@ -1845,7 +1554,6 @@ body.dark-theme .status-badge.status-soldout {
     background-color: #e74c3c;
 }
 
-/* Disabled Items */
 body.dark-theme .disabled-item {
     background-color: #34495e;
 }
@@ -1854,7 +1562,6 @@ body.dark-theme .disabled-item::after {
     background: rgba(26, 26, 26, 0.5);
 }
 
-/* Cart Notifications */
 body.dark-theme .cart-alert {
     background-color: #34495e;
     border-left-color: #3498db;
@@ -1881,7 +1588,6 @@ body.dark-theme .cart-alert .dismiss-btn:hover {
     color: #ecf0f1;
 }
 
-/* Confirmation Modal */
 body.dark-theme .confirm-modal-content {
     background-color: #2c3e50;
     color: #ecf0f1;
@@ -1897,11 +1603,9 @@ body.dark-theme .confirm-modal-buttons button {
 body.dark-theme .confirm-modal-buttons button:hover {
     background-color: #3498db;
 }
-
 </style>
 <body>
 
-    <!------------cart------------->
     <section class="cart">
         <div class="container">
             <div class="cart-top-wrap">
@@ -1933,7 +1637,7 @@ body.dark-theme .confirm-modal-buttons button:hover {
                 Giỏ Hàng 
                 </h1>
             </div>
-            <!-- Add this after your cart header -->
+
             <?php if (!empty($_SESSION['cart_notifications'])): ?>
                 <div class="cart-notifications">
                     <?php foreach ($_SESSION['cart_notifications'] as $notification): ?>
@@ -1949,11 +1653,7 @@ body.dark-theme .confirm-modal-buttons button:hover {
             <?php endif; ?>
             <div class="cart-content-row">
                 <div class="cart-content-left">
-
-
-                    <!-- Update the quantity control in the table row -->
-
-                    <table >
+                    <table>
                         <thead>
                             <tr>
                                 <th><input type="checkbox" id="select-all" class="product-checkbox"
@@ -1997,35 +1697,43 @@ body.dark-theme .confirm-modal-buttons button:hover {
             <?php endif; ?>
         </td>
 
-                                        <td>
-                                            <?php echo htmlspecialchars($item['type_name'] ?? 'N/A'); ?>
-                                        </td>
-                                        <td>
-                                            <div class="quantity-control">
-                                                <button class="quantity-btn minus"
-                                                    onclick="updateQuantity(<?php echo $item['product_id']; ?>, 'decrease')">
-                                                    <i class="fa-solid fa-minus"></i>
-                                                </button>
-                                                <input type="number" class="quantity-input"
-                                                    value="<?php echo $item['quantity']; ?>" min="1"
-                                                    data-id="<?php echo $item['product_id']; ?>"
-                                                    oninput="handleQuantityChange(this)">
-                                                <button class="quantity-btn plus"
-                                                    onclick="updateQuantity(<?php echo $item['product_id']; ?>, 'increase')">
-                                                    <i class="fa-solid fa-plus"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                        <td id="price">
-                                            <p>
-                                                <?php echo number_format($item['price'], 0, ',', '.'); ?> ₫
-                                            </p>
-                                        </td>
-                                        <td>
-                                            <span class="remove-item"
-                                                onclick="removeCartItem(<?php echo $item['product_id']; ?>)">X</span>
-                                        </td>
-                                    </tr>
+        <td>
+            <?php echo htmlspecialchars($item['type_name'] ?? 'N/A'); ?>
+        </td>
+
+        <td>
+            <div class="quantity-control">
+                <button class="quantity-btn minus"
+                    onclick="updateQuantity(<?php echo $item['product_id']; ?>, 'decrease')">
+                    <i class="fa-solid fa-minus"></i>
+                </button>
+                <input type="number" class="quantity-input"
+                    value="<?php echo $item['quantity']; ?>"
+                    min="1"
+                    max="<?php echo max(1, (int)$item['remain_quantity']); ?>"
+                    data-id="<?php echo $item['product_id']; ?>"
+                    data-stock="<?php echo (int)$item['remain_quantity']; ?>"
+                    oninput="handleQuantityChange(this)">
+                <button class="quantity-btn plus"
+                    onclick="updateQuantity(<?php echo $item['product_id']; ?>, 'increase')">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+            <div style="margin-top: 6px; font-size: 12px; color: #666;">
+                Tồn kho: <?php echo (int)$item['remain_quantity']; ?>
+            </div>
+        </td>
+
+        <td id="price">
+            <p>
+                <?php echo number_format($item['price'], 0, ',', '.'); ?> ₫
+            </p>
+        </td>
+        <td>
+            <span class="remove-item"
+                onclick="removeCartItem(<?php echo $item['product_id']; ?>)">X</span>
+        </td>
+    </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
@@ -2041,7 +1749,6 @@ body.dark-theme .confirm-modal-buttons button:hover {
                         </tbody>
                     </table>
 
-                    <!-- Add the delete buttons container here -->
                     <div class="delete-buttons-container">
                         <button class="delete-selected-btn" onclick="deleteSelectedItems()" id="delete-selected-btn"
                             style="display: none;">
@@ -2102,29 +1809,11 @@ body.dark-theme .confirm-modal-buttons button:hover {
                             <i class="fas fa-arrow-right"></i>
                         </button>
                     </div>
-
-                    <!-- <div class="cart-content-right-dangnhap">
-                        <p>TÀI KHOẢN</p>
-                        <p>Hãy <a href="">Đăng nhập</a> tài khoản của bạn để tích điểm thành viên</p>
-                    </div> -->
-
-                    <!-- <script>
-                        function navigateToDelivery() {
-                            // Chuyển đến trang delivery.php
-                            window.location.href = "delivery.php";
-                        }
-
-                        function goToHomePage() {
-                            // Chuyển hướng về trang chủ
-                            window.location.href = "index.php";
-}
-
-                    </script> -->
                 </div>
             </div>
         </div>
     </section>
-    <!-- Confirmation Modals -->
+
     <div id="deleteConfirmModal" class="confirm-modal">
         <div class="confirm-modal-content">
             <h3>Xác nhận xóa</h3>
@@ -2136,28 +1825,37 @@ body.dark-theme .confirm-modal-buttons button:hover {
         </div>
     </div>
     <script>
-        // Replace all JavaScript code with this single organized version
     let deleteType = '';
     let selectedItems = [];
-    
 
     // Quantity Management
     function handleQuantityChange(input) {
         const productId = input.dataset.id;
-        const quantity = parseInt(input.value);
-    
-        if (quantity < 1) {
+        let quantity = parseInt(input.value);
+        const stock = parseInt(input.dataset.stock) || 0;
+
+        if (isNaN(quantity) || quantity < 1) {
             showNotification('Số lượng không thể nhỏ hơn 1', 'error');
             input.value = 1;
             return;
         }
-    
-        // Clear any existing timeout
+
+        if (stock <= 0) {
+            showNotification('Sản phẩm này hiện không còn hàng', 'error');
+            input.value = 1;
+            return;
+        }
+
+        if (quantity > stock) {
+            showNotification(`Số lượng không thể vượt quá tồn kho hiện có (${stock})`, 'warning');
+            input.value = stock;
+            quantity = stock;
+        }
+
         if (window.quantityUpdateTimeout) {
             clearTimeout(window.quantityUpdateTimeout);
         }
-    
-        // Set a timeout for 1 second
+
         window.quantityUpdateTimeout = setTimeout(() => {
             fetch('update_cart.php', {
                 method: 'POST',
@@ -2172,17 +1870,27 @@ body.dark-theme .confirm-modal-buttons button:hover {
                     showNotification('Đã cập nhật số lượng', 'success');
                     setTimeout(() => location.reload(), 1000);
                 } else {
-                    showNotification('Có lỗi xảy ra', 'error');
+                    showNotification(data.message || 'Có lỗi xảy ra', 'error');
                 }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Có lỗi xảy ra', 'error');
             });
         }, 1000);
     }
-    
+
     function updateQuantity(productId, action) {
         const input = document.querySelector(`input[data-id="${productId}"]`);
-        let value = parseInt(input.value);
-    
+        let value = parseInt(input.value) || 1;
+        const stock = parseInt(input.dataset.stock) || 0;
+
         if (action === 'increase') {
+            if (value >= stock) {
+                showNotification(`Bạn chỉ có thể mua tối đa ${stock} sản phẩm theo số lượng tồn hiện có`, 'warning');
+                input.value = stock;
+                return;
+            }
             value++;
         } else if (action === 'decrease' && value > 1) {
             value--;
@@ -2190,81 +1898,80 @@ body.dark-theme .confirm-modal-buttons button:hover {
             showNotification('Số lượng không thể nhỏ hơn 1', 'error');
             return;
         }
-    
+
         input.value = value;
         handleQuantityChange(input);
     }
-    
+
     // Delete Management
     function removeCartItem(productId) {
         showConfirmModal('Bạn có chắc muốn xóa sản phẩm này?', 'single');
         selectedItems = [productId];
     }
-    
+
     function confirmDeleteAll() {
         showConfirmModal('Bạn có chắc muốn xóa tất cả sản phẩm?', 'all');
     }
-    
+
     function deleteSelectedItems() {
         if (selectedItems.length > 0) {
             showConfirmModal('Bạn có chắc muốn xóa các sản phẩm đã chọn?', 'selected');
         }
     }
-    
+
     // Modal Management
     function showConfirmModal(message, type) {
         deleteType = type;
         document.getElementById('deleteConfirmMessage').textContent = message;
         document.getElementById('deleteConfirmModal').style.display = 'block';
     }
-    
+
     function closeConfirmModal() {
         document.getElementById('deleteConfirmModal').style.display = 'none';
     }
-    
-    
-function executeDelete() {
-    closeConfirmModal();
-    let url, data;
 
-    switch (deleteType) {
-        case 'all':
-            url = 'remove_all_cart_items.php';
-            data = null;
-            break;
-        case 'selected':
-        case 'single':
-            url = deleteType === 'single' ? 'remove_cart_item.php' : 'remove_selected_items.php';
-            data = deleteType === 'single' ? 
-                `product_id=${selectedItems[0]}` :
-                JSON.stringify({ items: selectedItems });
-            break;
+    function executeDelete() {
+        closeConfirmModal();
+        let url, data;
+
+        switch (deleteType) {
+            case 'all':
+                url = 'remove_all_cart_items.php';
+                data = null;
+                break;
+            case 'selected':
+            case 'single':
+                url = deleteType === 'single' ? 'remove_cart_item.php' : 'remove_selected_items.php';
+                data = deleteType === 'single' ? 
+                    `product_id=${selectedItems[0]}` :
+                    JSON.stringify({ items: selectedItems });
+                break;
+        }
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': deleteType === 'single' ? 
+                    'application/x-www-form-urlencoded' : 
+                    'application/json',
+            },
+            body: data
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Đã xóa sản phẩm thành công', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showNotification(data.message || 'Có lỗi xảy ra', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Có lỗi xảy ra', 'error');
+        });
     }
 
-    fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': deleteType === 'single' ? 
-                'application/x-www-form-urlencoded' : 
-                'application/json',
-        },
-        body: data
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('Đã xóa sản phẩm thành công', 'success');
-            setTimeout(() => location.reload(), 1000);
-        } else {
-            showNotification(data.message || 'Có lỗi xảy ra', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('Có lỗi xảy ra', 'error');
-    });
-}
-    
     // Checkbox Management
     function toggleAllCheckboxes() {
         const mainCheckbox = document.getElementById('select-all');
@@ -2276,79 +1983,80 @@ function executeDelete() {
         });
         updateDeleteSelectedButton();
     }
-    
+
     function updateDeleteSelectedButton() {
         const checkboxes = document.getElementsByClassName('product-checkbox');
         const deleteSelectedBtn = document.getElementById('delete-selected-btn');
         selectedItems = [];
-    
+
         Array.from(checkboxes).forEach(checkbox => {
             if (checkbox.checked && checkbox.value) {
                 selectedItems.push(checkbox.value);
             }
         });
-    
+
         if (deleteSelectedBtn) {
             deleteSelectedBtn.style.display = selectedItems.length > 0 ? 'flex' : 'none';
         }
     }
-    
-function proceedToCheckout() {
-    const unavailableItems = document.querySelectorAll('.disabled-item').length;
-    
-    if (unavailableItems > 0) {
-        showNotification(
-            'Vui lòng xóa các sản phẩm không có sẵn khỏi giỏ hàng trước khi tiếp tục', 
-            'warning'
-        );
-        highlightUnavailableItems();
-        return;
+
+    function proceedToCheckout() {
+        const unavailableItems = document.querySelectorAll('.disabled-item').length;
+
+        if (unavailableItems > 0) {
+            showNotification(
+                'Vui lòng xóa các sản phẩm không có sẵn khỏi giỏ hàng trước khi tiếp tục', 
+                'warning'
+            );
+            highlightUnavailableItems();
+            return;
+        }
+
+        const totalItems = <?php echo $totalItems; ?>;
+        if (totalItems > 0) {
+            <?php if (isset($_SESSION['user_id'])): ?>
+                window.location.href = 'delivery.php';
+            <?php else: ?>
+                showNotification('Vui lòng đăng nhập để tiếp tục', 'warning');
+                setTimeout(() => window.location.href = 'login.php', 1500);
+            <?php endif; ?>
+        } else {
+            showNotification('Giỏ hàng của bạn đang trống!', 'info');
+        }
     }
 
-    const totalItems = <?php echo $totalItems; ?>;
-    if (totalItems > 0) {
-        <?php if (isset($_SESSION['user_id'])): ?>
-            window.location.href = 'delivery.php';
-        <?php else: ?>
-            showNotification('Vui lòng đăng nhập để tiếp tục', 'warning');
-            setTimeout(() => window.location.href = 'login.php', 1500);
-        <?php endif; ?>
-    } else {
-        showNotification('Giỏ hàng của bạn đang trống!', 'info');
-    }
-}
-    // Initialize on page load
     document.addEventListener('DOMContentLoaded', function() {
         updateDeleteSelectedButton();
-    
-        // Modal close events
+
         window.onclick = function(event) {
             if (event.target === document.getElementById('deleteConfirmModal')) {
                 closeConfirmModal();
             }
         }
-    
+
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 closeConfirmModal();
             }
         });
     });
+
     function highlightUnavailableItems() {
-    const unavailableItems = document.querySelectorAll('.disabled-item');
-    unavailableItems.forEach(item => {
-        item.style.animation = 'shake 0.5s ease-in-out';
-        setTimeout(() => {
-            item.style.animation = '';
-        }, 500);
-    });
-}
+        const unavailableItems = document.querySelectorAll('.disabled-item');
+        unavailableItems.forEach(item => {
+            item.style.animation = 'shake 0.5s ease-in-out';
+            setTimeout(() => {
+                item.style.animation = '';
+            }, 500);
+        });
+    }
     </script>
-        <script>
+
+    <script>
     function dismissNotification(productId) {
         const notification = event.target.closest('.cart-alert');
         notification.style.animation = 'slideOut 0.3s ease forwards';
-        
+
         setTimeout(() => {
             fetch('dismiss_notification.php', {
                 method: 'POST',
@@ -2365,44 +2073,40 @@ function proceedToCheckout() {
             });
         }, 300);
     }
-        // Add this to your existing script
-    // Update the title animation script
+
     document.addEventListener('DOMContentLoaded', function() {
         const title = document.querySelector('.eight h1');
         const text = title.textContent.trim();
-        title.innerHTML = ''; // Clear the title
-        
-        // Create spans for each letter with proper delays
+        title.innerHTML = '';
+
         text.split('').forEach((letter, index) => {
             const span = document.createElement('span');
-            span.textContent = letter === ' ' ? '\u00A0' : letter; // Preserve spaces
+            span.textContent = letter === ' ' ? '\u00A0' : letter;
             span.style.display = 'inline-block';
             span.style.opacity = '0';
             span.style.transform = 'translateY(20px)';
             span.style.transition = `all 0.5s ease ${index * 0.1}s`;
             title.appendChild(span);
-            
-            // Trigger animation after a small delay
+
             setTimeout(() => {
                 span.style.opacity = '1';
                 span.style.transform = 'translateY(0)';
             }, 100);
         });
     });
-    // Update hover effect
+
     let $color;
     const titleContainer = document.querySelector('.eight');
     titleContainer.addEventListener('mouseenter', () => {
         const letters = titleContainer.querySelectorAll('h1 span');
         letters.forEach((letter, index) => {
             letter.style.transform = 'translateY(-5px)';
-     $color=letter.style.color;
-            
+            $color = letter.style.color;
             letter.style.color = '#007bff';
             letter.style.transition = `all 0.3s ease ${index * 0.05}s`;
         });
     });
-    
+
     titleContainer.addEventListener('mouseleave', () => {
         const letters = titleContainer.querySelectorAll('h1 span');
         letters.forEach((letter, index) => {
@@ -2411,12 +2115,10 @@ function proceedToCheckout() {
             letter.style.transition = `all 0.3s ease ${index * 0.05}s`;
         });
     });
-
     </script>
 </body>
 
 </html>
 <?php
-
 include 'footer.php';
 ?>

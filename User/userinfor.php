@@ -1,63 +1,68 @@
 <?php
 include 'header.php';
 
-$query=' SELECT address,full_name FROM users_acc WHERE username = "'.$username.'" AND password = "'.$password.'" '; 
-
-$result = mysqli_query($connect, $query);
-while($row = mysqli_fetch_array($result))
-{
-    $address = $row['address'];
-    $full_name = $row['full_name'];
-    $_SESSION['full_name'] = $full_name;
-    $_SESSION['address'] = $address;
-}   
 // Redirect if not logged in
 if (!isset($_SESSION['username'])) {
     header('Location: login.php');
     exit();
 }
-// Add edit form handling
-if (isset($_POST['edit_profile'])) { {
-        // Connect to database
-        include 'connect.php';
 
-        $username = mysqli_real_escape_string($connect, $_POST['username']);
-        $email = mysqli_real_escape_string($connect, $_POST['email']);
-        $phone_num = mysqli_real_escape_string($connect, $_POST['phone_num']);
-        $full_name = mysqli_real_escape_string($connect, $_POST['full_name']);
-        $address = mysqli_real_escape_string($connect, $_POST['address']);
+$currentUsername = $_SESSION['username'];
 
-        $sql = "UPDATE users_acc SET 
-            username = '$username',
-            email = '$email',
-            phone_num = '$phone_num',
-            full_name = '$full_name',
-            address = '$address'";
+// Load latest full_name and address from database
+$query = "SELECT address, full_name FROM users_acc WHERE username = '$currentUsername'";
+$result = mysqli_query($connect, $query);
 
-        // Add password update only if new password is provided
-        if (!empty($_POST['password'])) {
-            $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-            $sql .= ", password = '$password'";
-        }
-
-        $sql .= " WHERE username = '" . $_SESSION['username'] . "'";
-
-        if (mysqli_query($connect, $sql)) {
-            // Update session variables
-            $_SESSION['username'] = $username;
-            $_SESSION['email'] = $email;
-            $_SESSION['phone_num'] = $phone_num;
-            $_SESSION['full_name'] = $full_name;
-            $_SESSION['address'] = $address;
-
-            echo "<script>showNotification('Cập nhật thông tin thành công!',success);</script>";
-            echo "<script>window.location.href='userinfor.php';</script>";
-        } else {
-            echo "<script>showNotification('Lỗi cập nhật thông tin: " . mysqli_error($connect) . "',error);</script>";
-        }
-    }
+if ($result && mysqli_num_rows($result) > 0) {
+    $row = mysqli_fetch_assoc($result);
+    $_SESSION['full_name'] = $row['full_name'];
+    $_SESSION['address'] = $row['address'];
 }
 
+// Add edit form handling
+if (isset($_POST['edit_profile'])) {
+    include 'connect.php';
+
+    $oldUsername = $_SESSION['username'];
+
+    $username = mysqli_real_escape_string($connect, $_POST['username']);
+    $email = mysqli_real_escape_string($connect, $_POST['email']);
+    $phone_num = mysqli_real_escape_string($connect, $_POST['phone_num']);
+    $full_name = mysqli_real_escape_string($connect, $_POST['full_name']);
+    $address = mysqli_real_escape_string($connect, $_POST['address']);
+
+    $sql = "UPDATE users_acc SET 
+        username = '$username',
+        email = '$email',
+        phone_num = '$phone_num',
+        full_name = '$full_name',
+        address = '$address'";
+
+    // Keep same password logic as login.php
+    if (!empty($_POST['password'])) {
+        $password = mysqli_real_escape_string($connect, $_POST['password']);
+        $sql .= ", password = '$password'";
+    }
+
+    $sql .= " WHERE username = '$oldUsername'";
+
+    if (mysqli_query($connect, $sql)) {
+        $_SESSION['username'] = $username;
+        $_SESSION['email'] = $email;
+        $_SESSION['phone_num'] = $phone_num;
+        $_SESSION['full_name'] = $full_name;
+        $_SESSION['address'] = $address;
+
+        if (!empty($_POST['password'])) {
+            $_SESSION['password'] = $_POST['password'];
+        }
+
+        echo "<script>showNotification('Cập nhật thông tin thành công!', 'success');</script>";
+        echo "<script>window.location.href='userinfor.php';</script>";
+    } else {
+        echo "<script>showNotification('Lỗi cập nhật thông tin: " . mysqli_error($connect) . "', 'error');</script>";
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -115,28 +120,6 @@ if (isset($_POST['edit_profile'])) { {
             flex: 1;
             color: #333;
         }
-
-        /* .nav-links {
-            display: flex;
-            gap: 1rem;
-            margin-top: 2rem;
-        }
-
-        .nav-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.5rem;
-            background-color: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            transition: background-color 0.3s;
-        }
-
-        .nav-link:hover {
-            background-color: #0056b3;
-        } */
 
         .status-badge {
             display: inline-block;
@@ -199,10 +182,8 @@ if (isset($_POST['edit_profile'])) { {
             background-color: #ffffff;
         }
     </style>
-    <!-- Add these styles to your existing CSS -->
 
     <style>
-        /* Add these styles */
         .modal {
             display: none;
             position: fixed;
@@ -354,7 +335,6 @@ if (isset($_POST['edit_profile'])) { {
         }
     </style>
     <style>
-        /* Enhanced Modal and Form Styles */
         .modal-content {
             background: linear-gradient(145deg, #ffffff, #f8f9fa);
             padding: 2.5rem;
@@ -471,13 +451,11 @@ if (isset($_POST['edit_profile'])) { {
             transform: rotate(90deg);
         }
 
-        /* Input placeholder styles */
         .form-group input::placeholder {
             color: #adb5bd;
             opacity: 0.7;
         }
 
-        /* Add icons to form fields */
         .form-group {
             position: relative;
         }
@@ -498,7 +476,6 @@ if (isset($_POST['edit_profile'])) { {
             color: #007bff;
         }
 
-        /* Animation for modal */
         @keyframes modalSlideIn {
             from {
                 opacity: 0;
@@ -547,7 +524,6 @@ if (isset($_POST['edit_profile'])) { {
         .form-group i {
             position: absolute;
             left: 170px;
-            /* Adjusted to account for label width */
             top: 50%;
             transform: translateY(-50%);
             color: #adb5bd;
@@ -558,479 +534,461 @@ if (isset($_POST['edit_profile'])) { {
             color: #007bff;
         }
 
-        /* Update modal content width for better layout */
         .modal-content {
             width: 90%;
             max-width: 600px;
-            /* Increased width to accommodate the labels */
             padding: 2.5rem;
         }
     </style>
-        <style>
-    /* Enhanced Page Title */
-    .page-title-container {
-        position: relative;
-        margin-bottom: 2rem;
-        padding: 2rem;
-        background: linear-gradient(135deg, #ffffff, #f8f9fa);
-        border-radius: 15px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-        overflow: hidden;
-    }
-    
-    .page-title-container::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 4px;
-        background: linear-gradient(90deg, #007bff, #00d2ff, #007bff);
-        background-size: 200% 100%;
-        animation: gradientSlide 3s linear infinite;
-    }
-    
-    h2.page-title {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        font-size: 2rem;
-        color: #2c3e50;
-        margin: 0;
-        padding: 0;
-        position: relative;
-        transition: all 0.3s ease;
-    }
-    
-    h2.page-title i {
-        font-size: 2.2rem;
-        background: linear-gradient(45deg, #007bff, #00d2ff);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
-        animation: iconFloat 3s ease infinite;
-    }
-    
-    .page-title::after {
-        content: '';
-        position: absolute;
-        bottom: -10px;
-        left: 0;
-        width: 50px;
-        height: 3px;
-        background: linear-gradient(90deg, #007bff, #00d2ff);
-        transition: width 0.3s ease;
-    }
-    
-    .page-title-container:hover .page-title::after {
-        width: 100px;
-    }
-    
-    @keyframes gradientSlide {
-        0% { background-position: 0% 50%; }
-        100% { background-position: 200% 50%; }
-    }
-    
-    @keyframes iconFloat {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-5px); }
-    }
-    
-    /* Enhanced Back Button */
-    .back-btn {
-        position: relative;
-        overflow: hidden;
-        background: linear-gradient(45deg, #6c757d, #495057);
-        border: none;
-        padding: 0.7rem 1.5rem;
-        border-radius: 30px;
-        color: white;
-        font-weight: 500;
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        margin-bottom: 2rem;
-    }
-    
-    .back-btn::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-        transition: 0.5s;
-    }
-    
-    .back-btn:hover {
-        transform: translateX(-5px);
-        box-shadow: 0 5px 15px rgba(108, 117, 125, 0.3);
-    }
-    
-    .back-btn:hover::before {
-        left: 100%;
-    }
-    
-    .back-btn i {
-        transition: transform 0.3s ease;
-    }
-    
-    .back-btn:hover i {
-        transform: translateX(-5px);
-    }
+    <style>
+        .page-title-container {
+            position: relative;
+            margin-bottom: 2rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, #ffffff, #f8f9fa);
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        .page-title-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #007bff, #00d2ff, #007bff);
+            background-size: 200% 100%;
+            animation: gradientSlide 3s linear infinite;
+        }
+
+        h2.page-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 2rem;
+            color: #2c3e50;
+            margin: 0;
+            padding: 0;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        h2.page-title i {
+            font-size: 2.2rem;
+            background: linear-gradient(45deg, #007bff, #00d2ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: iconFloat 3s ease infinite;
+        }
+
+        .page-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: linear-gradient(90deg, #007bff, #00d2ff);
+            transition: width 0.3s ease;
+        }
+
+        .page-title-container:hover .page-title::after {
+            width: 100px;
+        }
+
+        @keyframes gradientSlide {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        @keyframes iconFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .back-btn {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(45deg, #6c757d, #495057);
+            border: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 30px;
+            color: white;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            margin-bottom: 2rem;
+        }
+
+        .back-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .back-btn:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.3);
+        }
+
+        .back-btn:hover::before {
+            left: 100%;
+        }
+
+        .back-btn i {
+            transition: transform 0.3s ease;
+        }
+
+        .back-btn:hover i {
+            transform: translateX(-5px);
+        }
     </style>
-        <style>
-    /* Enhanced Info Row Styles */
-    .info-row {
-        display: flex;
-        padding: 1.2rem;
-        border-bottom: 1px solid #eee;
-        position: relative;
-        transition: all 0.3s ease;
-        background: linear-gradient(to right, transparent 50%, rgba(0, 123, 255, 0.05) 50%);
-        background-size: 200% 100%;
-        background-position: left bottom;
-        border-radius: 8px;
-        margin-bottom: 5px;
-    }
-    
-    .info-row:hover {
-        background-position: right bottom;
-        transform: translateX(10px);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-    }
-    
-    .info-label {
-        font-weight: 600;
-        width: 155px;
-        color: #495057;
-        position: relative;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    .info-label::after {
-        content: ':';
-        position: absolute;
-        right: 10px;
-        color: #adb5bd;
-        opacity: 0;
-        transition: all 0.3s ease;
-    }
-    
-    .info-row:hover .info-label::after {
-        opacity: 1;
-        transform: translateX(5px);
-    }
-    
-    .info-value {
-        flex: 1;
-        color: #2c3e50;
-        position: relative;
-        padding-left: 20px;
-        transition: all 0.3s ease;
-    }
-    
-    .info-value::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 50%;
-        width: 3px;
-        height: 0;
-        background: linear-gradient(to bottom, #007bff, #00d2ff);
-        transition: all 0.3s ease;
-        transform: translateY(-50%);
-    }
-    
-    .info-row:hover .info-value::before {
-        height: 80%;
-    }
-    
-    /* Status and Role Badge Enhancements */
-    .status-badge, .role-badge {
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 500;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        transition: all 0.3s ease;
-    }
-    
-    .status-badge::before, .role-badge::before {
-        font-family: "Font Awesome 5 Free";
-        font-weight: 900;
-    }
-    
-    .status-activated {
-        background: linear-gradient(135deg, #28a745, #20c997);
-        color: white;
-    }
-    
-    .status-activated::before {
-        content: '\f058'; /* check-circle icon */
-    }
-    
-    .status-banned {
-        background: linear-gradient(135deg, #dc3545, #fd7e14);
-        color: white;
-    }
-    
-    .status-banned::before {
-        content: '\f056'; /* minus-circle icon */
-    }
-    
-    .status-disabled {
-        background: linear-gradient(135deg, #6c757d, #495057);
-        color: white;
-    }
-    
-    .status-disabled::before {
-        content: '\f05e'; /* ban icon */
-    }
-    
-    .role-admin {
-        background: linear-gradient(135deg, #007bff, #6610f2);
-        color: white;
-    }
-    
-    .role-admin::before {
-        content: '\f509'; /* shield icon */
-    }
-    
-    .role-customer {
-        background: linear-gradient(135deg, #17a2b8, #20c997);
-        color: white;
-    }
-    
-    .role-customer::before {
-        content: '\f007'; /* user icon */
-    }
-    
-    /* Hover Effects */
-    .status-badge:hover, .role-badge:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-    }
-        /* Add to your existing styles */
-    .password-field {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    .toggle-password {
-        background: none;
-        border: none;
-        padding: 5px;
-        cursor: pointer;
-        color: #6c757d;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-    }
-    
-    .toggle-password:hover {
-        background-color: rgba(108, 117, 125, 0.1);
-        color: #007bff;
-    }
-    
-    .toggle-password:focus {
-        outline: none;
-        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-    }
-    
-    .password-dots {
-        letter-spacing: 2px;
-        font-weight: bold;
-    }
-    
-    .toggle-password.showing .fa-eye {
-        display: none;
-    }
-    
-    .toggle-password:not(.showing) .fa-eye-slash {
-        display: none;
-    }
-        /* User Info Dark Theme */
-    body.dark-theme .user-container {
-        background-color: #2c3e50;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    }
-    
-    /* Page Title Container */
-    body.dark-theme .page-title-container {
-        background: linear-gradient(145deg, #34495e, #2c3e50);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    }
-    
-    body.dark-theme .page-title {
-        color: #ecf0f1;
-    }
-    
-    body.dark-theme .page-title i {
-        background: linear-gradient(45deg, #3498db, #2ecc71);
-        -webkit-background-clip: text;
-        background-clip: text;
-    }
-    
-    /* Back Button */
-    body.dark-theme .back-btn {
-        background: linear-gradient(45deg, #34495e, #2c3e50);
-        color: #ecf0f1;
-    }
-    
-    body.dark-theme .back-btn:hover {
-        background: linear-gradient(45deg, #2c3e50, #243240);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    }
-    
-    /* Info Rows */
-    body.dark-theme .info-row {
-        border-bottom: 1px solid #445566;
-        /* background: linear-gradient(to right, transparent 50%, rgba(52, 152, 219, 0.1) 50%); */
-    }
-    
-    body.dark-theme .info-row:hover {
-        background-position: right bottom;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
-    
-    body.dark-theme .info-label {
-        color: #bdc3c7;
-    }
-    
-    body.dark-theme .info-value {
-        color: #ecf0f1;
-    }
-    
-    body.dark-theme .info-label i {
-        color: #3498db;
-    }
-    
-    /* Modal */
-    body.dark-theme .modal-content {
-        background: linear-gradient(145deg, #34495e, #2c3e50);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-    }
-    
-    body.dark-theme .modal-content h2 {
-        color: #ecf0f1;
-    }
-    
-    body.dark-theme .form-group label {
-        color: #bdc3c7;
-    }
-    
-    body.dark-theme .form-group input {
-        background-color: #34495e;
-        border-color: #445566;
-        color: #ecf0f1;
-    }
-    
-    body.dark-theme .form-group input:focus {
-        border-color: #3498db;
-        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
-    }
-    
-    body.dark-theme .form-group input::placeholder {
-        color: #95a5a6;
-    }
-    
-    body.dark-theme .form-group i {
-        color: #7f8c8d;
-    }
-    
-    /* Submit Button */
-    body.dark-theme .submit-btn {
-        background: linear-gradient(90deg, #3498db, #2980b9);
-    }
-    
-    body.dark-theme .submit-btn:hover {
-        background: linear-gradient(90deg, #2980b9, #2472a4);
-    }
-    
-    /* Close Button */
-    body.dark-theme .close-btn {
-        color: #bdc3c7;
-    }
-    
-    body.dark-theme .close-btn:hover {
-        color: #e74c3c;
-        background-color: rgba(231, 76, 60, 0.1);
-    }
-    
-    /* Status Badges */
-    body.dark-theme .status-badge {
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    }
-    
-    body.dark-theme .role-badge {
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    }
-    
-    /* Password Toggle */
-    body.dark-theme .toggle-password {
-        color: #bdc3c7;
-        background-color: rgba(189, 195, 199, 0.1);
-    }
-    
-    body.dark-theme .toggle-password:hover {
-        background-color: rgba(52, 152, 219, 0.2);
-        color: #3498db;
-    }
-    
-    body.dark-theme .password-dots {
-        color: #bdc3c7;
-    }
-    
-    /* Navigation Links */
-    body.dark-theme .nav-links .nav-link {
-        background-color: #34495e;
-        color: #ecf0f1;
-    }
-    
-    body.dark-theme .nav-links .nav-link:hover {
-        background-color: #2c3e50;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
-    
-    body.dark-theme #edit {
-        background-color: #34495e;
-        color: #ecf0f1;
-    }
-    
-    body.dark-theme #edit:hover {
-        background-color: #2c3e50;
-    }
-    
-    /* Animations */
-    @keyframes darkFadeIn {
-        from {
+    <style>
+        .info-row {
+            display: flex;
+            padding: 1.2rem;
+            border-bottom: 1px solid #eee;
+            position: relative;
+            transition: all 0.3s ease;
+            background: linear-gradient(to right, transparent 50%, rgba(0, 123, 255, 0.05) 50%);
+            background-size: 200% 100%;
+            background-position: left bottom;
+            border-radius: 8px;
+            margin-bottom: 5px;
+        }
+
+        .info-row:hover {
+            background-position: right bottom;
+            transform: translateX(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .info-label {
+            font-weight: 600;
+            width: 155px;
+            color: #495057;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-label::after {
+            content: ':';
+            position: absolute;
+            right: 10px;
+            color: #adb5bd;
             opacity: 0;
-            transform: translateY(-10px);
+            transition: all 0.3s ease;
         }
-        to {
+
+        .info-row:hover .info-label::after {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateX(5px);
         }
-    }
-    
-    body.dark-theme .user-container,
-    body.dark-theme .modal-content,
-    body.dark-theme .info-row {
-        animation: darkFadeIn 0.3s ease-out;
-    }
+
+        .info-value {
+            flex: 1;
+            color: #2c3e50;
+            position: relative;
+            padding-left: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .info-value::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 3px;
+            height: 0;
+            background: linear-gradient(to bottom, #007bff, #00d2ff);
+            transition: all 0.3s ease;
+            transform: translateY(-50%);
+        }
+
+        .info-row:hover .info-value::before {
+            height: 80%;
+        }
+
+        .status-badge, .role-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .status-badge::before, .role-badge::before {
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+        }
+
+        .status-activated {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .status-activated::before {
+            content: '\f058';
+        }
+
+        .status-banned {
+            background: linear-gradient(135deg, #dc3545, #fd7e14);
+            color: white;
+        }
+
+        .status-banned::before {
+            content: '\f056';
+        }
+
+        .status-disabled {
+            background: linear-gradient(135deg, #6c757d, #495057);
+            color: white;
+        }
+
+        .status-disabled::before {
+            content: '\f05e';
+        }
+
+        .role-admin {
+            background: linear-gradient(135deg, #007bff, #6610f2);
+            color: white;
+        }
+
+        .role-admin::before {
+            content: '\f509';
+        }
+
+        .role-customer {
+            background: linear-gradient(135deg, #17a2b8, #20c997);
+            color: white;
+        }
+
+        .role-customer::before {
+            content: '\f007';
+        }
+
+        .status-badge:hover, .role-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .password-field {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toggle-password {
+            background: none;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+            color: #6c757d;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+        }
+
+        .toggle-password:hover {
+            background-color: rgba(108, 117, 125, 0.1);
+            color: #007bff;
+        }
+
+        .toggle-password:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .password-dots {
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+
+        .toggle-password.showing .fa-eye {
+            display: none;
+        }
+
+        .toggle-password:not(.showing) .fa-eye-slash {
+            display: none;
+        }
+
+        body.dark-theme .user-container {
+            background-color: #2c3e50;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        body.dark-theme .page-title-container {
+            background: linear-gradient(145deg, #34495e, #2c3e50);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        body.dark-theme .page-title {
+            color: #ecf0f1;
+        }
+
+        body.dark-theme .page-title i {
+            background: linear-gradient(45deg, #3498db, #2ecc71);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+
+        body.dark-theme .back-btn {
+            background: linear-gradient(45deg, #34495e, #2c3e50);
+            color: #ecf0f1;
+        }
+
+        body.dark-theme .back-btn:hover {
+            background: linear-gradient(45deg, #2c3e50, #243240);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        body.dark-theme .info-row {
+            border-bottom: 1px solid #445566;
+        }
+
+        body.dark-theme .info-row:hover {
+            background-position: right bottom;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        body.dark-theme .info-label {
+            color: #bdc3c7;
+        }
+
+        body.dark-theme .info-value {
+            color: #ecf0f1;
+        }
+
+        body.dark-theme .info-label i {
+            color: #3498db;
+        }
+
+        body.dark-theme .modal-content {
+            background: linear-gradient(145deg, #34495e, #2c3e50);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        body.dark-theme .modal-content h2 {
+            color: #ecf0f1;
+        }
+
+        body.dark-theme .form-group label {
+            color: #bdc3c7;
+        }
+
+        body.dark-theme .form-group input {
+            background-color: #34495e;
+            border-color: #445566;
+            color: #ecf0f1;
+        }
+
+        body.dark-theme .form-group input:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+
+        body.dark-theme .form-group input::placeholder {
+            color: #95a5a6;
+        }
+
+        body.dark-theme .form-group i {
+            color: #7f8c8d;
+        }
+
+        body.dark-theme .submit-btn {
+            background: linear-gradient(90deg, #3498db, #2980b9);
+        }
+
+        body.dark-theme .submit-btn:hover {
+            background: linear-gradient(90deg, #2980b9, #2472a4);
+        }
+
+        body.dark-theme .close-btn {
+            color: #bdc3c7;
+        }
+
+        body.dark-theme .close-btn:hover {
+            color: #e74c3c;
+            background-color: rgba(231, 76, 60, 0.1);
+        }
+
+        body.dark-theme .status-badge {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        body.dark-theme .role-badge {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        body.dark-theme .toggle-password {
+            color: #bdc3c7;
+            background-color: rgba(189, 195, 199, 0.1);
+        }
+
+        body.dark-theme .toggle-password:hover {
+            background-color: rgba(52, 152, 219, 0.2);
+            color: #3498db;
+        }
+
+        body.dark-theme .password-dots {
+            color: #bdc3c7;
+        }
+
+        body.dark-theme .nav-links .nav-link {
+            background-color: #34495e;
+            color: #ecf0f1;
+        }
+
+        body.dark-theme .nav-links .nav-link:hover {
+            background-color: #2c3e50;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        body.dark-theme #edit {
+            background-color: #34495e;
+            color: #ecf0f1;
+        }
+
+        body.dark-theme #edit:hover {
+            background-color: #2c3e50;
+        }
+
+        @keyframes darkFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        body.dark-theme .user-container,
+        body.dark-theme .modal-content,
+        body.dark-theme .info-row {
+            animation: darkFadeIn 0.3s ease-out;
+        }
     </style>
 </head>
 
@@ -1051,14 +1009,11 @@ if (isset($_POST['edit_profile'])) { {
     </div>
 
             <div class="user-info">
-                <!-- Username - Always required -->
                 <div class="info-row">
                     <div class="info-label">Tên người dùng:</div>
                     <div class="info-value"><?php echo htmlspecialchars($_SESSION['username']); ?></div>
                 </div>
 
-                <!-- Password - Always required -->
-                                <!-- Replace the existing password info row -->
                 <div class="info-row">
                     <div class="info-label">
                         <i class="fas fa-key"></i> Mật khẩu:
@@ -1066,7 +1021,7 @@ if (isset($_POST['edit_profile'])) { {
                     <div class="info-value password-field">
                         <span class="password-dots">•••••••••</span>
                         <span class="password-text" style="display: none;">
-                            <?php echo htmlspecialchars($_SESSION['password']); ?>
+                            <?php echo isset($_SESSION['password']) ? htmlspecialchars($_SESSION['password']) : 'Không có'; ?>
                         </span>
                         <button type="button" class="toggle-password">
                             <i class="far fa-eye"></i>
@@ -1074,7 +1029,6 @@ if (isset($_POST['edit_profile'])) { {
                     </div>
                 </div>
 
-                <!-- Email -->
                 <div class="info-row">
                     <div class="info-label">Email:</div>
                     <div class="info-value">
@@ -1084,7 +1038,6 @@ if (isset($_POST['edit_profile'])) { {
                     </div>
                 </div>
 
-                <!-- Phone number -->
                 <div class="info-row">
                     <div class="info-label">Số điện thoại:</div>
                     <div class="info-value">
@@ -1094,7 +1047,6 @@ if (isset($_POST['edit_profile'])) { {
                     </div>
                 </div>
 
-                <!-- Register date -->
                 <div class="info-row">
                     <div class="info-label">Ngày đăng ký:</div>
                     <div class="info-value">
@@ -1104,7 +1056,6 @@ if (isset($_POST['edit_profile'])) { {
                     </div>
                 </div>
 
-                <!-- Full name -->
                 <div class="info-row">
                     <div class="info-label">Họ tên:</div>
                     <div class="info-value">
@@ -1114,7 +1065,6 @@ if (isset($_POST['edit_profile'])) { {
                     </div>
                 </div>
 
-                <!-- Address -->
                 <div class="info-row">
                     <div class="info-label">Địa chỉ:</div>
                     <div class="info-value">
@@ -1123,7 +1073,7 @@ if (isset($_POST['edit_profile'])) { {
                             : 'Không có'; ?>
                     </div>
                 </div>
-                <!-- Role display section -->
+
                 <div class="info-row">
                     <div class="info-label">Vai trò:</div>
                     <div class="info-value">
@@ -1146,7 +1096,6 @@ if (isset($_POST['edit_profile'])) { {
                     </div>
                 </div>
 
-                <!-- Status -->
                 <div class="info-row">
                     <div class="info-label">Trạng thái:</div>
                     <div class="info-value">
@@ -1175,7 +1124,7 @@ if (isset($_POST['edit_profile'])) { {
                     </div>
                 </div>
             </div>
-            <!-- Replace the existing edit form with this modal -->
+
             <div id="editModal" class="modal">
                 <div class="modal-content">
                     <button type="button" class="close-btn" onclick="closeEditForm()">&times;</button>
@@ -1239,7 +1188,6 @@ if (isset($_POST['edit_profile'])) { {
             </div>
     </main>
     <script>
-
         function toggleEditForm() {
             const modal = document.getElementById('editModal');
             modal.classList.add('show');
@@ -1250,7 +1198,6 @@ if (isset($_POST['edit_profile'])) { {
             modal.classList.remove('show');
         }
 
-        // Close modal when clicking outside
         window.onclick = function (event) {
             const modal = document.getElementById('editModal');
             if (event.target == modal) {
@@ -1258,46 +1205,41 @@ if (isset($_POST['edit_profile'])) { {
             }
         }
 
-        // Close modal with Escape key
         document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape') {
                 closeEditForm();
             }
         });
-                // Add this to your existing script section
+
         document.addEventListener('DOMContentLoaded', function() {
             const titleContainer = document.querySelector('.page-title-container');
             const title = document.querySelector('.page-title');
-            
-            // Add hover effect
+
             titleContainer.addEventListener('mouseenter', () => {
                 title.querySelector('i').style.transform = 'scale(1.1) rotate(5deg)';
             });
-            
+
             titleContainer.addEventListener('mouseleave', () => {
                 title.querySelector('i').style.transform = 'scale(1) rotate(0)';
             });
-            
-            // Add entrance animation
+
             titleContainer.style.opacity = '0';
             titleContainer.style.transform = 'translateY(-20px)';
-            
+
             setTimeout(() => {
                 titleContainer.style.transition = 'all 0.5s ease';
                 titleContainer.style.opacity = '1';
                 titleContainer.style.transform = 'translateY(0)';
             }, 300);
         });
-                // Add to your existing script section
+
         document.addEventListener('DOMContentLoaded', function() {
             const infoRows = document.querySelectorAll('.info-row');
-            
+
             infoRows.forEach(row => {
-                // Add icons to labels
                 const label = row.querySelector('.info-label');
                 const labelText = label.textContent.toLowerCase();
-                
-                // Add appropriate icons based on the label
+
                 if (labelText.includes('tên')) {
                     label.innerHTML = `<i class="fas fa-user"></i> ${label.textContent}`;
                 } else if (labelText.includes('mật khẩu')) {
@@ -1315,48 +1257,51 @@ if (isset($_POST['edit_profile'])) { {
                 } else if (labelText.includes('trạng thái')) {
                     label.innerHTML = `<i class="fas fa-toggle-on"></i> ${label.textContent}`;
                 }
-        
-                // Add hover animation
+
                 row.addEventListener('mouseenter', () => {
-                    row.querySelector('.info-label i').style.transform = 'scale(1.2) rotate(5deg)';
+                    const icon = row.querySelector('.info-label i');
+                    if (icon) {
+                        icon.style.transform = 'scale(1.2) rotate(5deg)';
+                    }
                 });
-        
+
                 row.addEventListener('mouseleave', () => {
-                    row.querySelector('.info-label i').style.transform = 'scale(1) rotate(0)';
+                    const icon = row.querySelector('.info-label i');
+                    if (icon) {
+                        icon.style.transform = 'scale(1) rotate(0)';
+                    }
                 });
             });
         });
-                // Add to your existing script section
+
         document.addEventListener('DOMContentLoaded', function() {
             const toggleBtn = document.querySelector('.toggle-password');
             const passwordDots = document.querySelector('.password-dots');
             const passwordText = document.querySelector('.password-text');
-        
-            toggleBtn.addEventListener('click', function() {
-                // Toggle icon
-                const icon = toggleBtn.querySelector('i');
-                if (icon.classList.contains('fa-eye')) {
-                    icon.classList.remove('fa-eye');
-                    icon.classList.add('fa-eye-slash');
-                    // Show password
-                    passwordDots.style.display = 'none';
-                    passwordText.style.display = 'inline';
-                    toggleBtn.setAttribute('title', 'Ẩn mật khẩu');
-                } else {
-                    icon.classList.remove('fa-eye-slash');
-                    icon.classList.add('fa-eye');
-                    // Hide password
-                    passwordDots.style.display = 'inline';
-                    passwordText.style.display = 'none';
-                    toggleBtn.setAttribute('title', 'Hiện mật khẩu');
-                }
-        
-                // Add animation effect
-                toggleBtn.style.transform = 'scale(0.8)';
-                setTimeout(() => {
-                    toggleBtn.style.transform = 'scale(1)';
-                }, 100);
-            });
+
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    const icon = toggleBtn.querySelector('i');
+                    if (icon.classList.contains('fa-eye')) {
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                        passwordDots.style.display = 'none';
+                        passwordText.style.display = 'inline';
+                        toggleBtn.setAttribute('title', 'Ẩn mật khẩu');
+                    } else {
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                        passwordDots.style.display = 'inline';
+                        passwordText.style.display = 'none';
+                        toggleBtn.setAttribute('title', 'Hiện mật khẩu');
+                    }
+
+                    toggleBtn.style.transform = 'scale(0.8)';
+                    setTimeout(() => {
+                        toggleBtn.style.transform = 'scale(1)';
+                    }, 100);
+                });
+            }
         });
     </script>
 </body>
