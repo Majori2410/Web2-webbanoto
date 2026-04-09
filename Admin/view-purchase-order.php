@@ -1,44 +1,102 @@
 <?php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-// final commit
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    header("Location: login.php");
+    exit();
+}
+
 include '../User/connect.php';
 
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    die("Thiếu mã phiếu nhập.");
+    die("Missing purchase order ID.");
 }
 
 $purchase_id = (int)$_GET['id'];
 
-$order_sql = "
-    SELECT po.*, s.supplier_name
-    FROM purchase_orders po
-    LEFT JOIN suppliers s ON po.supplier_id = s.supplier_id
-    WHERE po.purchase_id = $purchase_id
-";
-$order_result = mysqli_query($connect, $order_sql);
-$order = mysqli_fetch_assoc($order_result);
+$message = '';
+$messageType = '';
 
-if (!$order) {
-    die("Không tìm thấy phiếu nhập.");
+if (isset($_GET['updated']) && $_GET['updated'] == '1') {
+    $message = 'Purchase order updated successfully.';
+    $messageType = 'success';
+} elseif (isset($_GET['completed']) && $_GET['completed'] == '1') {
+    $message = 'Purchase order completed successfully. Product stock, average import price, and selling price have been updated.';
+    $messageType = 'success';
 }
 
-$items_sql = "
-    SELECT poi.*, p.car_name
+/*
+    Order info:
+    - supplier name
+    - calculated total from item lines
+*/
+$orderStmt = $connect->prepare("
+    SELECT
+        po.purchase_id,
+        po.purchase_code,
+        po.purchase_date,
+        po.status,
+        po.note,
+        s.supplier_name,
+        COALESCE(SUM(poi.quantity * poi.import_price), 0) AS calculated_total
+    FROM purchase_orders po
+    LEFT JOIN suppliers s ON po.supplier_id = s.supplier_id
+    LEFT JOIN purchase_order_items poi ON po.purchase_id = poi.purchase_id
+    WHERE po.purchase_id = ?
+    GROUP BY
+        po.purchase_id,
+        po.purchase_code,
+        po.purchase_date,
+        po.status,
+        po.note,
+        s.supplier_name
+    LIMIT 1
+");
+$orderStmt->bind_param("i", $purchase_id);
+$orderStmt->execute();
+$orderResult = $orderStmt->get_result();
+$order = $orderResult->fetch_assoc();
+
+if (!$order) {
+    die("Purchase order not found.");
+}
+
+/*
+    Item list:
+    - For draft order: import_sequence stores baseline max completed sequence
+      => displayed import count = import_sequence + 1
+    - For completed order: import_sequence is actual import sequence
+      => displayed import count = import_sequence
+*/
+$itemsStmt = $connect->prepare("
+    SELECT
+        poi.item_id,
+        poi.product_id,
+        poi.import_sequence,
+        poi.quantity,
+        poi.import_price,
+        p.car_name,
+        (poi.quantity * poi.import_price) AS line_total
     FROM purchase_order_items poi
     LEFT JOIN products p ON poi.product_id = p.product_id
-    WHERE poi.purchase_id = $purchase_id
+    WHERE poi.purchase_id = ?
     ORDER BY poi.item_id ASC
-";
-$items_result = mysqli_query($connect, $items_sql);
+");
+$itemsStmt->bind_param("i", $purchase_id);
+$itemsStmt->execute();
+$itemsResult = $itemsStmt->get_result();
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chi tiết phiếu nhập</title>
+    <title>Purchase Order Details</title>
     <link rel="icon" href="../User/dp56vcf7.png" type="image/png">
     <style>
         body{
@@ -57,6 +115,7 @@ $items_result = mysqli_query($connect, $items_sql);
         h1{
             margin-top:0;
             color:#2c3e50;
+            margin-bottom:18px;
         }
         .top-link{
             display:inline-block;
@@ -65,11 +124,27 @@ $items_result = mysqli_query($connect, $items_sql);
             text-decoration:none;
             font-weight:bold;
         }
+        .message{
+            padding:14px 16px;
+            border-radius:10px;
+            margin-bottom:18px;
+            font-weight:600;
+        }
+
+        .message.success{
+            background:#dcfce7;
+            color:#166534;
+        }
+
+        .message.error{
+            background:#fee2e2;
+            color:#991b1b;
+        }
         .info-grid{
             display:grid;
             grid-template-columns: repeat(2, 1fr);
             gap:16px;
-            margin-bottom:20px;
+            margin-bottom:24px;
         }
         .info-box{
             background:#f9fafb;
@@ -87,6 +162,18 @@ $items_result = mysqli_query($connect, $items_sql);
             font-weight:bold;
             color:#1f2937;
         }
+        .value-note{
+            font-size:15px;
+            font-weight:normal;
+            line-height:1.5;
+            color:#374151;
+        }
+        .section-title{
+            font-size:20px;
+            color:#2c3e50;
+            margin:8px 0 12px;
+            font-weight:700;
+        }
         table{
             width:100%;
             border-collapse:collapse;
@@ -96,6 +183,7 @@ $items_result = mysqli_query($connect, $items_sql);
             border-bottom:1px solid #ddd;
             padding:12px;
             text-align:left;
+            vertical-align:middle;
         }
         th{
             background:#2c3e50;
@@ -140,35 +228,68 @@ $items_result = mysqli_query($connect, $items_sql);
             background:#f59e0b;
             color:white;
         }
+        .btn-secondary{
+            background:#e5e7eb;
+            color:#334155;
+        }
         .btn:hover{
             opacity:0.92;
+        }
+        .empty-message{
+            margin-top:12px;
+            color:#6b7280;
+            font-style:italic;
+        }
+
+        @media (max-width: 768px){
+            .info-grid{
+                grid-template-columns:1fr;
+            }
+            table{
+                display:block;
+                overflow-x:auto;
+                white-space:nowrap;
+            }
         }
     </style>
 </head>
 <body>
     <?php include 'admin-navbar.php'; ?>
+
     <div class="page">
-        <a class="top-link" href="manage-purchase-orders.php">← Quay lại danh sách phiếu nhập</a>
-        <h1>Chi tiết phiếu nhập</h1>
+        <a class="top-link" href="manage-purchase-orders.php">← Back to Purchase Orders</a>
+        <h1>Purchase Order Details</h1>
+
+        <?php if ($message !== ''): ?>
+            <div class="message <?php echo $messageType; ?>">
+                <?php echo htmlspecialchars($message); ?>
+            </div>
+        <?php endif; ?>
 
         <div class="info-grid">
             <div class="info-box">
-                <div class="label">Mã phiếu</div>
+                <div class="label">Purchase Order Code</div>
                 <div class="value"><?php echo htmlspecialchars($order['purchase_code']); ?></div>
             </div>
 
             <div class="info-box">
-                <div class="label">Nhà cung cấp</div>
-                <div class="value"><?php echo htmlspecialchars($order['supplier_name'] ?? 'Chưa có'); ?></div>
+                <div class="label">Supplier Name</div>
+                <div class="value"><?php echo htmlspecialchars($order['supplier_name'] ?? 'N/A'); ?></div>
             </div>
 
             <div class="info-box">
-                <div class="label">Ngày nhập</div>
-                <div class="value"><?php echo htmlspecialchars($order['purchase_date']); ?></div>
+                <div class="label">Purchase Date</div>
+                <div class="value">
+                    <?php
+                        echo !empty($order['purchase_date'])
+                            ? date('d/m/Y', strtotime($order['purchase_date']))
+                            : 'N/A';
+                    ?>
+                </div>
             </div>
 
             <div class="info-box">
-                <div class="label">Trạng thái</div>
+                <div class="label">Status</div>
                 <div class="value">
                     <?php if ($order['status'] === 'completed'): ?>
                         <span class="badge-completed">Completed</span>
@@ -179,49 +300,65 @@ $items_result = mysqli_query($connect, $items_sql);
             </div>
 
             <div class="info-box">
-                <div class="label">Tổng tiền</div>
-                <div class="value"><?php echo number_format((float)$order['total_amount'], 0, ',', '.'); ?> đ</div>
+                <div class="label">Total Amount (VND)</div>
+                <div class="value"><?php echo number_format((float)$order['calculated_total'], 0, ',', '.'); ?></div>
             </div>
 
             <div class="info-box">
-                <div class="label">Ghi chú</div>
-                <div class="value" style="font-size:15px; font-weight:normal;">
-                    <?php echo nl2br(htmlspecialchars($order['note'] ?: 'Không có ghi chú')); ?>
+                <div class="label">Note</div>
+                <div class="value value-note">
+                    <?php echo nl2br(htmlspecialchars($order['note'] ?: 'No note available.')); ?>
                 </div>
             </div>
         </div>
 
-        <h3>Danh sách sản phẩm nhập</h3>
-        <table>
-            <tr>
-                <th>ID</th>
-                <th>Sản phẩm</th>
-                <th>Số lượng</th>
-                <th>Giá nhập</th>
-                <th>Giá bán dự kiến</th>
-            </tr>
+        <div class="section-title">Imported Product List</div>
 
-            <?php while ($item = mysqli_fetch_assoc($items_result)): ?>
+        <?php if ($itemsResult && mysqli_num_rows($itemsResult) > 0): ?>
+            <table>
                 <tr>
-                    <td><?php echo $item['item_id']; ?></td>
-                    <td><?php echo htmlspecialchars($item['car_name']); ?></td>
-                    <td><?php echo $item['quantity']; ?></td>
-                    <td><?php echo number_format((float)$item['import_price'], 0, ',', '.'); ?> đ</td>
-                </td> <td><?php echo number_format((float)$item['selling_price'], 0, ',', '.'); ?> đ</td>
+                    <th>ID</th>
+                    <th>Product</th>
+                    <th>Import Count</th>
+                    <th>Quantity</th>
+                    <th>New Import Price (This Order) (VND)</th>
+                    <th>Line Total (VND)</th>
                 </tr>
-            <?php endwhile; ?>
-        </table>
+
+                <?php while ($item = mysqli_fetch_assoc($itemsResult)): ?>
+                    <?php
+                        $displayImportCount = ($order['status'] === 'completed')
+                            ? (int)$item['import_sequence']
+                            : ((int)$item['import_sequence'] + 1);
+                    ?>
+                    <tr>
+                        <td><?php echo (int)$item['item_id']; ?></td>
+                        <td><?php echo htmlspecialchars($item['car_name'] ?? 'Unknown Product'); ?></td>
+                        <td><?php echo $displayImportCount; ?></td>
+                        <td><?php echo (int)$item['quantity']; ?></td>
+                        <td><?php echo number_format((float)$item['import_price'], 0, ',', '.'); ?></td>
+                        <td><?php echo number_format((float)$item['line_total'], 0, ',', '.'); ?></td>
+                    </tr>
+                <?php endwhile; ?>
+            </table>
+        <?php else: ?>
+            <p class="empty-message">No imported products found for this purchase order.</p>
+        <?php endif; ?>
 
         <div class="actions">
-    <?php if ($order['status'] === 'draft'): ?>
-        <a href="edit-purchase-order.php?id=<?php echo $order['purchase_id']; ?>" class="btn btn-warning">Sửa phiếu nhập</a>
+            <?php if ($order['status'] === 'draft'): ?>
+                <a href="edit-purchase-order.php?id=<?php echo $order['purchase_id']; ?>" class="btn btn-warning">
+                    Edit Purchase Order
+                </a>
 
-        <a href="complete-purchase-order.php?id=<?php echo $order['purchase_id']; ?>"
-           class="btn btn-primary"
-           onclick="return confirm('Bạn có chắc muốn hoàn thành phiếu nhập này không? Sau khi hoàn thành sẽ không sửa được nữa.');">
-           Hoàn thành phiếu nhập
-        </a>
-    <?php endif; ?>
+                <a
+                    href="complete-purchase-order.php?id=<?php echo $order['purchase_id']; ?>"
+                    class="btn btn-primary"
+                    onclick="return confirm('Are you sure you want to complete this purchase order? After completion, it can no longer be edited and product stock, average import price, and selling price will be updated.');"
+                >
+                    Complete Purchase Order
+                </a>
+            <?php endif; ?>
         </div>
     </div>
 </body>

@@ -754,12 +754,12 @@ a[href*="inventory"] .nav-count {
     </a>
     <a href="manage-purchase-orders.php">
     <i class="fa-solid fa-truck-ramp-box"></i>
-    <span>Quản lý nhập hàng</span>
+    <span>Purchase Orders</span>
 </a>
 
     <a href="manage-prices.php">
     <i class="fa-solid fa-money-bill-trend-up"></i>
-    <span>Quản lý giá bán</span>
+    <span>Product Pricing</span>
     </a>
         <div class="nav-user">
         <span class="user-greeting">

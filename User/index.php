@@ -1162,29 +1162,14 @@ body.dark-theme .lg{
                     $brand_query = "SELECT * FROM car_types ORDER BY type_name";
                     $brand_result = mysqli_query($connect, $brand_query);
 
-                    $brands = array();
                     while ($brand = mysqli_fetch_assoc($brand_result)) {
-                        if ($brand['type_name'] == 'bmw' || $brand['type_name'] == 'lamborghini' || $brand['type_name'] == 'mazda') {
-
-                            echo '<div class="lgb">';
-                            echo '<a style="text-transform:uppercase;" class="lg" href="' . urlencode($brand['type_name']) . '.php">';
-                            // Use the logo_url field from your database
-                            echo '<img class="lg-b" src="'. htmlspecialchars($brand['logo_url']) . '" 
-                            alt="' . htmlspecialchars($brand['type_name']) . '">';
-                            echo '<br>';
-                            echo htmlspecialchars($brand['type_name']);
-                            echo '</a>';
-                            echo '</div>';
-                        } else {
-                            echo '<div class="lgb">';
-                            echo '<a style="text-transform:uppercase;" class="lg" href="brand.php?type=' . urlencode($brand['type_name']) . '">';                            // Use the logo_url field from your database
-                            echo '<img class="lg-b" src="'. htmlspecialchars($brand['logo_url']) . '" 
-                            alt="' . htmlspecialchars($brand['type_name']) . '">';
-                            echo '<br>';
-                            echo htmlspecialchars($brand['type_name']);
-                            echo '</a>';
-                            echo '</div>';
-                        }
+                        echo '<div class="lgb">';
+                        echo '<a style="text-transform:uppercase;" class="lg" href="brand.php?type=' . urlencode($brand['type_name']) . '">';
+                        echo '<img class="lg-b" src="' . htmlspecialchars($brand['logo_url']) . '" alt="' . htmlspecialchars($brand['type_name']) . '">';
+                        echo '<br>';
+                        echo htmlspecialchars($brand['type_name']);
+                        echo '</a>';
+                        echo '</div>';
                     }
                     ?>
                 </div>

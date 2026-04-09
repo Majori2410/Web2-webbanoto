@@ -18,21 +18,86 @@ $messageType = '';
 
 $purchase_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($purchase_id <= 0) {
-    die('ID phiếu nhập không hợp lệ.');
+    die('Invalid purchase order ID.');
 }
 
-/* LẤY DANH SÁCH SẢN PHẨM CHO DATALIST */
+/*
+    LOAD PRODUCTS FOR DATALIST
+
+    Rules:
+    - previous_import_price = latest COMPLETED import price
+    - max_import_sequence = highest COMPLETED import sequence
+    - import_count shown on UI = max_import_sequence + 1
+    - exclude current purchase order from stats
+*/
 $products = [];
-$productQuery = mysqli_query($connect, "SELECT product_id, car_name FROM products ORDER BY car_name ASC");
-if ($productQuery) {
-    while ($row = mysqli_fetch_assoc($productQuery)) {
+$productSql = "
+    SELECT
+        p.product_id,
+        p.car_name,
+        COALESCE(p.remain_quantity, 0) AS remain_quantity,
+        COALESCE(import_stats.max_import_sequence, 0) AS max_import_sequence,
+        CASE
+            WHEN COALESCE(import_stats.max_import_sequence, 0) > 0
+                THEN import_stats.max_import_sequence + 1
+            ELSE 1
+        END AS import_count,
+        import_stats.previous_import_price
+    FROM products p
+    LEFT JOIN (
+        SELECT
+            x.product_id,
+            MAX(x.import_sequence) AS max_import_sequence,
+            SUBSTRING_INDEX(
+                GROUP_CONCAT(x.import_price ORDER BY x.import_sequence DESC, x.item_id DESC),
+                ',',
+                1
+            ) AS previous_import_price
+        FROM (
+            SELECT
+                poi.item_id,
+                poi.product_id,
+                poi.import_sequence,
+                poi.import_price
+            FROM purchase_order_items poi
+            INNER JOIN purchase_orders po
+                ON po.purchase_id = poi.purchase_id
+            WHERE po.status = 'completed'
+              AND poi.purchase_id <> ?
+        ) x
+        GROUP BY x.product_id
+    ) import_stats ON import_stats.product_id = p.product_id
+    ORDER BY p.car_name ASC
+";
+$productStmt = $connect->prepare($productSql);
+$productStmt->bind_param("i", $purchase_id);
+$productStmt->execute();
+$productResult = $productStmt->get_result();
+
+if ($productResult) {
+    while ($row = $productResult->fetch_assoc()) {
         $products[] = $row;
     }
 }
 
-/* LẤY THÔNG TIN PHIẾU NHẬP */
+/* LOAD SUPPLIERS FOR DATALIST */
+$suppliers = [];
+$supplierQuery = mysqli_query($connect, "SELECT supplier_name FROM suppliers ORDER BY supplier_name ASC");
+if ($supplierQuery) {
+    while ($row = mysqli_fetch_assoc($supplierQuery)) {
+        $suppliers[] = $row['supplier_name'];
+    }
+}
+
+/* LOAD PURCHASE ORDER */
 $orderSql = "
-    SELECT po.*, s.supplier_name
+    SELECT
+        po.purchase_id,
+        po.purchase_code,
+        po.purchase_date,
+        po.note,
+        po.status,
+        s.supplier_name
     FROM purchase_orders po
     LEFT JOIN suppliers s ON po.supplier_id = s.supplier_id
     WHERE po.purchase_id = ?
@@ -44,25 +109,62 @@ $orderStmt->execute();
 $orderResult = $orderStmt->get_result();
 
 if (!$orderResult || $orderResult->num_rows === 0) {
-    die('Không tìm thấy phiếu nhập.');
+    die('Purchase order not found.');
 }
 
 $order = $orderResult->fetch_assoc();
 
 if ($order['status'] !== 'draft') {
-    die('Chỉ được sửa phiếu nhập ở trạng thái draft.');
+    die('Only draft purchase orders can be edited.');
 }
 
-/* LẤY CHI TIẾT PHIẾU NHẬP */
+/*
+    LOAD CURRENT ITEMS OF THIS DRAFT
+
+    Rules:
+    - current item import_sequence is baseline max completed sequence stored in draft
+    - displayed import count for draft = import_sequence + 1
+    - previous_import_price comes from completed orders only, excluding current order
+*/
 $itemSql = "
-    SELECT poi.*, p.car_name
+    SELECT
+        poi.item_id,
+        poi.product_id,
+        poi.import_sequence,
+        poi.quantity,
+        poi.import_price,
+        p.car_name,
+        COALESCE(p.remain_quantity, 0) AS remain_quantity,
+        import_stats.previous_import_price
     FROM purchase_order_items poi
-    JOIN products p ON poi.product_id = p.product_id
+    INNER JOIN products p ON poi.product_id = p.product_id
+    LEFT JOIN (
+        SELECT
+            x.product_id,
+            SUBSTRING_INDEX(
+                GROUP_CONCAT(x.import_price ORDER BY x.import_sequence DESC, x.item_id DESC),
+                ',',
+                1
+            ) AS previous_import_price
+        FROM (
+            SELECT
+                poi3.item_id,
+                poi3.product_id,
+                poi3.import_sequence,
+                poi3.import_price
+            FROM purchase_order_items poi3
+            INNER JOIN purchase_orders po3
+                ON po3.purchase_id = poi3.purchase_id
+            WHERE po3.status = 'completed'
+              AND poi3.purchase_id <> ?
+        ) x
+        GROUP BY x.product_id
+    ) import_stats ON import_stats.product_id = poi.product_id
     WHERE poi.purchase_id = ?
     ORDER BY poi.item_id ASC
 ";
 $itemStmt = $connect->prepare($itemSql);
-$itemStmt->bind_param("i", $purchase_id);
+$itemStmt->bind_param("ii", $purchase_id, $purchase_id);
 $itemStmt->execute();
 $itemResult = $itemStmt->get_result();
 
@@ -71,6 +173,10 @@ if ($itemResult) {
     while ($row = $itemResult->fetch_assoc()) {
         $items[] = $row;
     }
+}
+
+function toPositiveFloat($value): float {
+    return max(0, (float)$value);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -85,13 +191,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $product_ids = $_POST['product_id'] ?? [];
         $product_names = $_POST['product_name'] ?? [];
         $quantities = $_POST['quantity'] ?? [];
-        $import_prices = $_POST['import_price'] ?? [];
+        $new_import_prices = $_POST['new_import_price'] ?? [];
 
         if ($purchase_code === '' || $purchase_date === '' || $supplier_name === '') {
-            throw new Exception('Vui lòng nhập đầy đủ mã phiếu, ngày nhập và nhà cung cấp.');
+            throw new Exception('Please enter purchase order code, purchase date, and supplier name.');
         }
 
-        /* KIỂM TRA / THÊM NHÀ CUNG CẤP */
+        /* CHECK DUPLICATE PURCHASE CODE EXCLUDING CURRENT ORDER */
+        $checkCode = $connect->prepare("
+            SELECT purchase_id
+            FROM purchase_orders
+            WHERE purchase_code = ?
+              AND purchase_id <> ?
+        ");
+        $checkCode->bind_param("si", $purchase_code, $purchase_id);
+        $checkCode->execute();
+        $checkCodeResult = $checkCode->get_result();
+
+        if ($checkCodeResult && $checkCodeResult->num_rows > 0) {
+            throw new Exception("Purchase order code '{$purchase_code}' already exists.");
+        }
+
+        /* CHECK / INSERT SUPPLIER */
         $supplier_id = null;
 
         $checkSupplier = $connect->prepare("SELECT supplier_id FROM suppliers WHERE supplier_name = ?");
@@ -105,58 +226,154 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $insertSupplier = $connect->prepare("INSERT INTO suppliers (supplier_name) VALUES (?)");
             $insertSupplier->bind_param("s", $supplier_name);
+
             if (!$insertSupplier->execute()) {
-                throw new Exception('Không thể thêm nhà cung cấp mới.');
+                throw new Exception('Unable to add new supplier.');
             }
+
             $supplier_id = $insertSupplier->insert_id;
         }
 
-        /* KIỂM TRA ITEM */
+        /* VALIDATE ITEMS */
         $total_amount = 0;
         $valid_items = [];
+        $used_product_ids = [];
 
-        for ($i = 0; $i < count($product_names); $i++) {
+        $lineCount = max(
+            count($product_ids),
+            count($product_names),
+            count($quantities),
+            count($new_import_prices)
+        );
+
+        for ($i = 0; $i < $lineCount; $i++) {
             $product_id = isset($product_ids[$i]) ? (int)$product_ids[$i] : 0;
             $product_name = trim($product_names[$i] ?? '');
             $quantity = isset($quantities[$i]) ? (int)$quantities[$i] : 0;
-            $import_price = isset($import_prices[$i]) ? (float)$import_prices[$i] : 0;
 
-            if ($product_name === '' && $quantity === 0 && $import_price == 0) {
+            $new_import_price_raw = $new_import_prices[$i] ?? '0';
+            $new_import_price_clean = str_replace('.', '', $new_import_price_raw);
+            $new_import_price = toPositiveFloat($new_import_price_clean);
+
+            if ($product_name === '' && $quantity === 0 && $new_import_price == 0) {
                 continue;
             }
 
             if ($product_id <= 0) {
-                throw new Exception("Sản phẩm '{$product_name}' không hợp lệ. Vui lòng chọn sản phẩm từ danh sách gợi ý.");
+                throw new Exception("Product '{$product_name}' is invalid. Please select a product from the suggestion list.");
             }
+
+            if (in_array($product_id, $used_product_ids, true)) {
+                throw new Exception("Product '{$product_name}' is duplicated in the same purchase order.");
+            }
+            $used_product_ids[] = $product_id;
 
             if ($quantity <= 0) {
-                throw new Exception("Số lượng của sản phẩm '{$product_name}' phải lớn hơn 0.");
+                throw new Exception("Import quantity for '{$product_name}' must be greater than 0.");
             }
 
-            if ($import_price <= 0) {
-                throw new Exception("Giá nhập của sản phẩm '{$product_name}' phải lớn hơn 0.");
+            if ($new_import_price <= 0) {
+                throw new Exception("New import price (this order) for '{$product_name}' must be greater than 0.");
             }
 
-            $line_total = $quantity * $import_price;
+            /*
+                IMPORTANT:
+                only completed orders affect baseline import sequence and previous import price
+                current draft order is excluded
+            */
+            $productCheck = $connect->prepare("
+                SELECT
+                    p.product_id,
+                    p.car_name,
+                    COALESCE(p.remain_quantity, 0) AS remain_quantity,
+                    COALESCE(import_stats.max_import_sequence, 0) AS max_import_sequence,
+                    CASE
+                        WHEN COALESCE(import_stats.max_import_sequence, 0) > 0
+                            THEN import_stats.max_import_sequence + 1
+                        ELSE 1
+                    END AS import_count,
+                    import_stats.previous_import_price
+                FROM products p
+                LEFT JOIN (
+                    SELECT
+                        x.product_id,
+                        MAX(x.import_sequence) AS max_import_sequence,
+                        SUBSTRING_INDEX(
+                            GROUP_CONCAT(x.import_price ORDER BY x.import_sequence DESC, x.item_id DESC),
+                            ',',
+                            1
+                        ) AS previous_import_price
+                    FROM (
+                        SELECT
+                            poi.item_id,
+                            poi.product_id,
+                            poi.import_sequence,
+                            poi.import_price
+                        FROM purchase_order_items poi
+                        INNER JOIN purchase_orders po
+                            ON po.purchase_id = poi.purchase_id
+                        WHERE po.status = 'completed'
+                          AND poi.purchase_id <> ?
+                    ) x
+                    GROUP BY x.product_id
+                ) import_stats ON import_stats.product_id = p.product_id
+                WHERE p.product_id = ?
+                LIMIT 1
+            ");
+            $productCheck->bind_param("ii", $purchase_id, $product_id);
+            $productCheck->execute();
+            $productResult = $productCheck->get_result();
+
+            if (!$productResult || $productResult->num_rows === 0) {
+                throw new Exception("Selected product '{$product_name}' no longer exists.");
+            }
+
+            $dbProduct = $productResult->fetch_assoc();
+            $dbProductName = $dbProduct['car_name'];
+            $dbCurrentStock = (int)$dbProduct['remain_quantity'];
+            $maxImportSequence = (int)($dbProduct['max_import_sequence'] ?? 0);
+            $displayImportCount = (int)($dbProduct['import_count'] ?? 1);
+            $previousImportPrice = isset($dbProduct['previous_import_price']) && $dbProduct['previous_import_price'] !== null
+                ? (float)$dbProduct['previous_import_price']
+                : null;
+
+            /*
+                Draft stores baseline max completed import sequence.
+                Actual import sequence will be assigned only when completed.
+            */
+            $import_sequence = $maxImportSequence;
+
+            $line_total = $quantity * $new_import_price;
             $total_amount += $line_total;
 
             $valid_items[] = [
                 'product_id' => $product_id,
-                'product_name' => $product_name,
+                'product_name' => $dbProductName,
+                'current_stock' => $dbCurrentStock,
+                'previous_import_price' => $previousImportPrice,
+                'display_import_count' => $displayImportCount,
+                'import_sequence' => $import_sequence,
                 'quantity' => $quantity,
-                'import_price' => $import_price
+                'new_import_price' => $new_import_price,
+                'line_total' => $line_total
             ];
         }
 
         if (count($valid_items) === 0) {
-            throw new Exception('Vui lòng nhập ít nhất 1 sản phẩm.');
+            throw new Exception('Please add at least one valid product.');
         }
 
-        /* UPDATE PHIẾU NHẬP */
+        /* UPDATE PURCHASE ORDER */
         $updateOrder = $connect->prepare("
             UPDATE purchase_orders
-            SET purchase_code = ?, supplier_id = ?, purchase_date = ?, note = ?, total_amount = ?
-            WHERE purchase_id = ? AND status = 'draft'
+            SET
+                purchase_code = ?,
+                supplier_id = ?,
+                purchase_date = ?,
+                note = ?,
+                total_amount = ?
+            WHERE purchase_id = ?
+              AND status = 'draft'
         ");
         $updateOrder->bind_param(
             "sissdi",
@@ -169,46 +386,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
 
         if (!$updateOrder->execute()) {
-            throw new Exception('Không thể cập nhật phiếu nhập.');
+            throw new Exception('Unable to update purchase order.');
         }
 
-        /* XÓA CHI TIẾT CŨ */
+        /* DELETE OLD ITEMS OF THIS DRAFT */
         $deleteItems = $connect->prepare("DELETE FROM purchase_order_items WHERE purchase_id = ?");
         $deleteItems->bind_param("i", $purchase_id);
+
         if (!$deleteItems->execute()) {
-            throw new Exception('Không thể cập nhật danh sách sản phẩm.');
+            throw new Exception('Unable to replace old product lines.');
         }
 
-        /* THÊM LẠI CHI TIẾT MỚI
-           % lợi nhuận không quản lý ở trang này
-        */
+        /* INSERT NEW DRAFT ITEMS */
         $insertItem = $connect->prepare("
             INSERT INTO purchase_order_items (
                 purchase_id,
                 product_id,
+                import_sequence,
                 quantity,
-                import_price,
-                profit_percent,
-                selling_price
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                import_price
+            ) VALUES (?, ?, ?, ?, ?)
         ");
 
         foreach ($valid_items as $item) {
-            $profit_percent = 0;
-            $selling_price = $item['import_price'];
-
             $insertItem->bind_param(
-                "iiiddd",
+                "iiiid",
                 $purchase_id,
                 $item['product_id'],
+                $item['import_sequence'],
                 $item['quantity'],
-                $item['import_price'],
-                $profit_percent,
-                $selling_price
+                $item['new_import_price']
             );
 
             if (!$insertItem->execute()) {
-                throw new Exception("Không thể lưu sản phẩm '{$item['product_name']}'.");
+                throw new Exception("Unable to save product '{$item['product_name']}'.");
             }
         }
 
@@ -225,11 +436,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sửa phiếu nhập</title>
+    <title>Edit Purchase Order</title>
     <link rel="icon" href="../User/dp56vcf7.png" type="image/png">
     <style>
         body{
@@ -239,7 +450,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .page{
-            max-width:1200px;
+            max-width:1450px;
             margin:30px auto;
             background:#fff;
             padding:24px;
@@ -332,6 +543,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight:700;
         }
 
+        .section-desc{
+            margin-top:-2px;
+            margin-bottom:16px;
+            color:#64748b;
+            font-size:14px;
+        }
+
         table{
             width:100%;
             border-collapse:collapse;
@@ -339,7 +557,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         th, td{
-            padding:12px;
+            padding:10px;
             border-bottom:1px solid #e5e7eb;
             text-align:left;
             vertical-align:middle;
@@ -348,6 +566,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         th{
             background:#2c3e50;
             color:#fff;
+            font-size:14px;
         }
 
         .input-wrap{
@@ -357,13 +576,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .product-input{
             width:100%;
-            min-width:320px;
+            min-width:260px;
             padding-right:36px;
         }
 
         .small-input{
             width:100%;
-            min-width:140px;
+            min-width:130px;
+        }
+
+        .readonly-input{
+            background:#f8fafc;
+            color:#475569;
+        }
+
+        .first-import-note{
+            display:block;
+            margin-top:6px;
+            color:#2563eb;
+            font-size:12px;
+            font-style:italic;
         }
 
         .input-icon{
@@ -402,6 +634,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             cursor:pointer;
             font-weight:700;
             transition:0.2s ease;
+            text-decoration:none;
+            display:inline-block;
         }
 
         .btn-primary{
@@ -436,6 +670,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             gap:12px;
             margin-top:18px;
             flex-wrap:wrap;
+            align-items:center;
+            justify-content:space-between;
+        }
+
+        .left-actions,
+        .right-actions{
+            display:flex;
+            gap:12px;
+            flex-wrap:wrap;
+            align-items:center;
         }
 
         .hint{
@@ -444,19 +688,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-top:4px;
         }
 
-        @media (max-width: 768px){
-            .form-grid{
-                grid-template-columns:1fr;
-            }
+        .summary-box{
+            margin-top:18px;
+            padding:16px 18px;
+            background:#f8fafc;
+            border:1px solid #e2e8f0;
+            border-radius:12px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            flex-wrap:wrap;
+            gap:12px;
+        }
 
+        .summary-title{
+            color:#334155;
+            font-weight:700;
+        }
+
+        .summary-value{
+            color:#0f172a;
+            font-size:22px;
+            font-weight:800;
+        }
+
+        .text-danger{
+            color:#dc2626;
+            font-size:12px;
+            margin-top:4px;
+            display:block;
+        }
+
+        @media (max-width: 992px){
             table{
                 display:block;
                 overflow-x:auto;
                 white-space:nowrap;
             }
+        }
+
+        @media (max-width: 768px){
+            .form-grid{
+                grid-template-columns:1fr;
+            }
+
+            .actions{
+                flex-direction:column;
+                align-items:stretch;
+            }
+
+            .left-actions,
+            .right-actions{
+                width:100%;
+            }
 
             .product-input{
-                min-width:260px;
+                min-width:220px;
             }
         }
     </style>
@@ -465,8 +752,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php include 'admin-navbar.php'; ?>
 
     <div class="page">
-        <a class="top-link" href="view-purchase-order.php?id=<?php echo $purchase_id; ?>">← Quay lại chi tiết phiếu nhập</a>
-        <h1>Sửa phiếu nhập</h1>
+        <a class="top-link" href="manage-purchase-orders.php">← Back to Purchase Orders</a>
+        <h1>Edit Purchase Order</h1>
 
         <?php if ($message !== ''): ?>
             <div class="message <?php echo $messageType; ?>">
@@ -474,22 +761,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php endif; ?>
 
-        <form method="POST" action="">
+        <form method="POST" action="" id="purchaseOrderForm">
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Mã phiếu nhập</label>
+                    <label>Purchase Order Code</label>
                     <input
                         type="text"
                         name="purchase_code"
                         class="form-input"
                         value="<?php echo htmlspecialchars($_POST['purchase_code'] ?? $order['purchase_code']); ?>"
-                        placeholder="VD: PN001"
+                        placeholder="Example: PN001"
                         required
                     >
                 </div>
 
                 <div class="form-group">
-                    <label>Ngày nhập</label>
+                    <label>Purchase Date</label>
                     <input
                         type="date"
                         name="purchase_date"
@@ -500,83 +787,141 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <div class="form-group full">
-                    <label>Nhà cung cấp</label>
+                    <label>Supplier Name</label>
                     <input
                         type="text"
                         name="supplier_name"
                         class="form-input"
-                        placeholder="Nhập tên nhà cung cấp"
+                        list="supplier-list"
+                        placeholder="Enter supplier name"
                         value="<?php echo htmlspecialchars($_POST['supplier_name'] ?? ($order['supplier_name'] ?? '')); ?>"
                         required
                     >
-                    <div class="hint">Nếu nhà cung cấp chưa có trong hệ thống, hệ thống sẽ tự thêm mới.</div>
+                    <div class="hint">If the supplier does not exist yet, the system will automatically create a new supplier record.</div>
                 </div>
 
                 <div class="form-group full">
-                    <label>Ghi chú</label>
+                    <label>Note</label>
                     <textarea
                         name="note"
                         class="form-input"
-                        placeholder="Nhập ghi chú nếu có..."
+                        placeholder="Enter note if needed..."
                     ><?php echo htmlspecialchars($_POST['note'] ?? $order['note']); ?></textarea>
                 </div>
             </div>
 
-            <div class="section-title">Danh sách sản phẩm nhập</div>
+            <div class="section-title">Imported Product List</div>
+            <div class="section-desc">
+                This screen edits the current draft batch information only. Previous Import Price is taken from the latest completed import. Import Count shows the next expected import number based on completed purchase orders only. Product stock and average import price will be updated only when the purchase order is completed.
+            </div>
 
             <table id="productTable">
                 <thead>
                     <tr>
-                        <th>Sản phẩm</th>
-                        <th>Số lượng</th>
-                        <th>Giá nhập</th>
-                        <th>Xóa</th>
+                        <th>Product</th>
+                        <th>Current Stock</th>
+                        <th>Previous Import Price (VND)</th>
+                        <th>Import Count</th>
+                        <th>Import Quantity</th>
+                        <th>New Import Price (This Order) (VND)</th>
+                        <th>Line Total (VND)</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (!empty($items)): ?>
                         <?php foreach ($items as $item): ?>
+                            <?php
+                                $displayImportCount = ((int)$item['import_sequence']) + 1;
+                                $hasPreviousImportPrice = isset($item['previous_import_price']) && $item['previous_import_price'] !== null && $item['previous_import_price'] !== '';
+                            ?>
                             <tr>
                                 <td>
                                     <input type="hidden" name="product_id[]" class="product-id-hidden" value="<?php echo (int)$item['product_id']; ?>">
+
                                     <div class="input-wrap">
                                         <input
                                             type="text"
                                             name="product_name[]"
                                             class="form-input product-input product-name-input"
                                             list="product-list"
-                                            placeholder="Tìm sản phẩm..."
+                                            placeholder="Search product..."
                                             value="<?php echo htmlspecialchars($item['car_name']); ?>"
                                             required
                                         >
                                         <span class="input-icon">▼</span>
                                     </div>
+                                    <span class="first-import-note">
+                                        <?php if (!$hasPreviousImportPrice): ?>
+                                            This is the first completed import for this product.
+                                        <?php endif; ?>
+                                    </span>
+                                    <span class="text-danger row-error"></span>
                                 </td>
+
+                                <td>
+                                    <input
+                                        type="text"
+                                        class="form-input small-input readonly-input current-stock-display"
+                                        value="<?php echo (int)$item['remain_quantity']; ?>"
+                                        readonly
+                                    >
+                                </td>
+
+                                <td>
+                                    <input
+                                        type="text"
+                                        class="form-input small-input readonly-input previous-import-price-display"
+                                        value="<?php echo $hasPreviousImportPrice ? number_format((float)$item['previous_import_price'], 0, ',', '.') : ''; ?>"
+                                        readonly
+                                        data-raw="<?php echo $hasPreviousImportPrice ? (float)$item['previous_import_price'] : ''; ?>"
+                                    >
+                                </td>
+
+                                <td>
+                                    <input
+                                        type="text"
+                                        class="form-input small-input readonly-input import-count-display"
+                                        value="<?php echo $displayImportCount; ?>"
+                                        readonly
+                                    >
+                                </td>
+
                                 <td>
                                     <input
                                         type="number"
                                         name="quantity[]"
-                                        class="form-input small-input"
+                                        class="form-input small-input quantity-input"
                                         min="1"
-                                        placeholder="Số lượng"
+                                        placeholder="Quantity"
                                         value="<?php echo (int)$item['quantity']; ?>"
                                         required
                                     >
                                 </td>
+
                                 <td>
                                     <input
-                                        type="number"
-                                        name="import_price[]"
-                                        class="form-input small-input"
-                                        min="0"
-                                        step="0.01"
-                                        placeholder="Giá nhập"
-                                        value="<?php echo (float)$item['import_price']; ?>"
+                                        type="text"
+                                        name="new_import_price[]"
+                                        class="form-input small-input new-import-price-input money-input"
+                                        inputmode="numeric"
+                                        placeholder="Price"
+                                        value="<?php echo number_format((float)$item['import_price'], 0, ',', '.'); ?>"
                                         required
                                     >
                                 </td>
+
                                 <td>
-                                    <button type="button" class="btn btn-danger" onclick="removeRow(this)">Xóa</button>
+                                    <input
+                                        type="text"
+                                        class="form-input small-input readonly-input line-total-display"
+                                        value="<?php echo number_format((float)$item['quantity'] * (float)$item['import_price'], 0, ',', '.'); ?>"
+                                        readonly
+                                    >
+                                </td>
+
+                                <td>
+                                    <button type="button" class="btn btn-danger" onclick="removeRow(this)">Remove</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -584,41 +929,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <tr>
                             <td>
                                 <input type="hidden" name="product_id[]" class="product-id-hidden">
+
                                 <div class="input-wrap">
                                     <input
                                         type="text"
                                         name="product_name[]"
                                         class="form-input product-input product-name-input"
                                         list="product-list"
-                                        placeholder="Tìm sản phẩm..."
+                                        placeholder="Search product..."
                                         required
                                     >
                                     <span class="input-icon">▼</span>
                                 </div>
+                                <span class="first-import-note"></span>
+                                <span class="text-danger row-error"></span>
                             </td>
+
+                            <td>
+                                <input
+                                    type="text"
+                                    class="form-input small-input readonly-input current-stock-display"
+                                    value="0"
+                                    readonly
+                                >
+                            </td>
+
+                            <td>
+                                <input
+                                    type="text"
+                                    class="form-input small-input readonly-input previous-import-price-display"
+                                    value=""
+                                    readonly
+                                >
+                            </td>
+
+                            <td>
+                                <input
+                                    type="text"
+                                    class="form-input small-input readonly-input import-count-display"
+                                    value="1"
+                                    readonly
+                                >
+                            </td>
+
                             <td>
                                 <input
                                     type="number"
                                     name="quantity[]"
-                                    class="form-input small-input"
+                                    class="form-input small-input quantity-input"
                                     min="1"
-                                    placeholder="Số lượng"
+                                    placeholder="Quantity"
                                     required
                                 >
                             </td>
+
                             <td>
                                 <input
-                                    type="number"
-                                    name="import_price[]"
-                                    class="form-input small-input"
-                                    min="0"
-                                    step="0.01"
-                                    placeholder="Giá nhập"
+                                    type="text"
+                                    name="new_import_price[]"
+                                    class="form-input small-input new-import-price-input money-input"
+                                    inputmode="numeric"
+                                    placeholder="Price"
                                     required
                                 >
                             </td>
+
                             <td>
-                                <button type="button" class="btn btn-danger" onclick="removeRow(this)">Xóa</button>
+                                <input
+                                    type="text"
+                                    class="form-input small-input readonly-input line-total-display"
+                                    value=""
+                                    readonly
+                                >
+                            </td>
+
+                            <td>
+                                <button type="button" class="btn btn-danger" onclick="removeRow(this)">Remove</button>
                             </td>
                         </tr>
                     <?php endif; ?>
@@ -630,52 +1016,198 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <option
                         value="<?php echo htmlspecialchars($product['car_name']); ?>"
                         data-id="<?php echo (int)$product['product_id']; ?>"
+                        data-stock="<?php echo (int)$product['remain_quantity']; ?>"
+                        data-prev-price="<?php echo isset($product['previous_import_price']) && $product['previous_import_price'] !== null ? (float)$product['previous_import_price'] : ''; ?>"
+                        data-count="<?php echo (int)$product['import_count']; ?>"
                     ></option>
                 <?php endforeach; ?>
             </datalist>
 
+            <datalist id="supplier-list">
+                <?php foreach ($suppliers as $supplier): ?>
+                    <option value="<?php echo htmlspecialchars($supplier); ?>"></option>
+                <?php endforeach; ?>
+            </datalist>
+
+            <div class="summary-box">
+                <div class="summary-title">Grand Total</div>
+                <div class="summary-value" id="grandTotalText">0</div>
+            </div>
+
             <div class="actions">
-                <button type="button" class="btn btn-secondary" onclick="addRow()">+ Thêm sản phẩm</button>
-                <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                <div class="left-actions">
+                    <button type="button" class="btn btn-secondary" onclick="addRow()">+ Add Product</button>
+                </div>
+                <div class="right-actions">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
             </div>
         </form>
     </div>
 
     <script>
-        function bindProductInputEvents(scope = document) {
-            const inputs = scope.querySelectorAll('.product-name-input');
+        function formatMoney(value) {
+            const number = Math.round(Number(value) || 0);
+            return number.toLocaleString('vi-VN');
+        }
 
-            inputs.forEach(input => {
-                input.addEventListener('input', function () {
-                    const row = this.closest('tr');
-                    const hiddenInput = row.querySelector('.product-id-hidden');
-                    const value = this.value.trim();
-                    const options = document.querySelectorAll('#product-list option');
+        function formatMoneyInput(value) {
+            value = value.replace(/[^\d]/g, '');
+            return value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
 
-                    hiddenInput.value = '';
+        function parseMoneyInput(value) {
+            return value.replace(/\./g, '');
+        }
 
-                    options.forEach(option => {
-                        if (option.value === value) {
-                            hiddenInput.value = option.getAttribute('data-id');
-                        }
-                    });
-                });
-
-                input.addEventListener('change', function () {
-                    const row = this.closest('tr');
-                    const hiddenInput = row.querySelector('.product-id-hidden');
-                    const value = this.value.trim();
-                    const options = document.querySelectorAll('#product-list option');
-
-                    hiddenInput.value = '';
-
-                    options.forEach(option => {
-                        if (option.value === value) {
-                            hiddenInput.value = option.getAttribute('data-id');
-                        }
-                    });
-                });
+        function bindMoneyInput(input) {
+            input.addEventListener('input', function () {
+                const raw = parseMoneyInput(this.value);
+                this.value = formatMoneyInput(raw);
+                updateRowCalculations(this.closest('tr'));
             });
+        }
+
+        function findProductOptionByName(name) {
+            const options = document.querySelectorAll('#product-list option');
+            for (const option of options) {
+                if (option.value.trim() === name.trim()) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        function clearRowProductData(row) {
+            row.querySelector('.product-id-hidden').value = '';
+            row.querySelector('.current-stock-display').value = '0';
+            row.querySelector('.previous-import-price-display').value = '';
+            row.querySelector('.previous-import-price-display').dataset.raw = '';
+            row.querySelector('.import-count-display').value = '1';
+            row.querySelector('.line-total-display').value = '';
+            row.querySelector('.first-import-note').textContent = '';
+            row.querySelector('.row-error').textContent = '';
+        }
+
+        function updateRowCalculations(row) {
+            const quantity = parseInt(row.querySelector('.quantity-input').value || '0', 10);
+            const rawValue = row.querySelector('.new-import-price-input').value || '0';
+            const newImportPrice = parseFloat(rawValue.replace(/\./g, '')) || 0;
+
+            let lineTotal = 0;
+
+            if (quantity > 0 && newImportPrice > 0) {
+                lineTotal = quantity * newImportPrice;
+            }
+
+            row.querySelector('.line-total-display').value = lineTotal > 0 ? formatMoney(lineTotal) : '';
+            updateGrandTotal();
+        }
+
+        function updateGrandTotal() {
+            let grandTotal = 0;
+
+            document.querySelectorAll('#productTable tbody tr').forEach(row => {
+                const quantity = parseInt(row.querySelector('.quantity-input').value || '0', 10);
+                const rawValue = row.querySelector('.new-import-price-input').value || '0';
+                const newImportPrice = parseFloat(rawValue.replace(/\./g, '')) || 0;
+
+                if (quantity > 0 && newImportPrice > 0) {
+                    grandTotal += quantity * newImportPrice;
+                }
+            });
+
+            document.getElementById('grandTotalText').textContent = formatMoney(grandTotal);
+        }
+
+        function checkDuplicateProduct(row) {
+            const currentId = row.querySelector('.product-id-hidden').value;
+            const errorEl = row.querySelector('.row-error');
+            errorEl.textContent = '';
+
+            if (!currentId) {
+                return false;
+            }
+
+            let duplicateCount = 0;
+            document.querySelectorAll('.product-id-hidden').forEach(input => {
+                if (input.value === currentId) {
+                    duplicateCount++;
+                }
+            });
+
+            if (duplicateCount > 1) {
+                errorEl.textContent = 'This product is already selected in another row.';
+                return true;
+            }
+
+            return false;
+        }
+
+        function syncProductSelection(input) {
+            const row = input.closest('tr');
+            const hiddenId = row.querySelector('.product-id-hidden');
+            const currentStockDisplay = row.querySelector('.current-stock-display');
+            const previousImportPriceDisplay = row.querySelector('.previous-import-price-display');
+            const importCountDisplay = row.querySelector('.import-count-display');
+            const firstImportNote = row.querySelector('.first-import-note');
+            const rowError = row.querySelector('.row-error');
+
+            rowError.textContent = '';
+            firstImportNote.textContent = '';
+
+            const option = findProductOptionByName(input.value);
+
+            if (!option) {
+                clearRowProductData(row);
+                updateGrandTotal();
+                return;
+            }
+
+            const productId = option.getAttribute('data-id') || '';
+            const stock = parseInt(option.getAttribute('data-stock') || '0', 10);
+            const prevPriceAttr = option.getAttribute('data-prev-price');
+            const count = parseInt(option.getAttribute('data-count') || '1', 10);
+
+            hiddenId.value = productId;
+            currentStockDisplay.value = stock;
+            importCountDisplay.value = count;
+
+            if (prevPriceAttr === null || prevPriceAttr === '') {
+                previousImportPriceDisplay.value = '';
+                previousImportPriceDisplay.dataset.raw = '';
+                firstImportNote.textContent = 'This is the first completed import for this product.';
+            } else {
+                const prevPrice = parseFloat(prevPriceAttr || '0');
+                previousImportPriceDisplay.dataset.raw = prevPrice;
+                previousImportPriceDisplay.value = formatMoney(prevPrice);
+            }
+
+            if (checkDuplicateProduct(row)) {
+                hiddenId.value = '';
+            }
+
+            updateRowCalculations(row);
+        }
+
+        function bindRowEvents(row) {
+            const productInput = row.querySelector('.product-name-input');
+            const quantityInput = row.querySelector('.quantity-input');
+            const newImportPriceInput = row.querySelector('.new-import-price-input');
+
+            productInput.addEventListener('input', function () {
+                syncProductSelection(this);
+            });
+
+            productInput.addEventListener('change', function () {
+                syncProductSelection(this);
+            });
+
+            quantityInput.addEventListener('input', function () {
+                updateRowCalculations(row);
+            });
+
+            bindMoneyInput(newImportPriceInput);
         }
 
         function addRow() {
@@ -685,59 +1217,153 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             tr.innerHTML = `
                 <td>
                     <input type="hidden" name="product_id[]" class="product-id-hidden">
+
                     <div class="input-wrap">
                         <input
                             type="text"
                             name="product_name[]"
                             class="form-input product-input product-name-input"
                             list="product-list"
-                            placeholder="Tìm sản phẩm..."
+                            placeholder="Search product..."
                             required
                         >
                         <span class="input-icon">▼</span>
                     </div>
+                    <span class="first-import-note"></span>
+                    <span class="text-danger row-error"></span>
                 </td>
+
+                <td>
+                    <input
+                        type="text"
+                        class="form-input small-input readonly-input current-stock-display"
+                        value="0"
+                        readonly
+                    >
+                </td>
+
+                <td>
+                    <input
+                        type="text"
+                        class="form-input small-input readonly-input previous-import-price-display"
+                        value=""
+                        readonly
+                    >
+                </td>
+
+                <td>
+                    <input
+                        type="text"
+                        class="form-input small-input readonly-input import-count-display"
+                        value="1"
+                        readonly
+                    >
+                </td>
+
                 <td>
                     <input
                         type="number"
                         name="quantity[]"
-                        class="form-input small-input"
+                        class="form-input small-input quantity-input"
                         min="1"
-                        placeholder="Số lượng"
+                        placeholder="Quantity"
                         required
                     >
                 </td>
+
                 <td>
                     <input
-                        type="number"
-                        name="import_price[]"
-                        class="form-input small-input"
-                        min="0"
-                        step="0.01"
-                        placeholder="Giá nhập"
+                        type="text"
+                        name="new_import_price[]"
+                        class="form-input small-input new-import-price-input money-input"
+                        inputmode="numeric"
+                        placeholder="Price"
                         required
                     >
                 </td>
+
                 <td>
-                    <button type="button" class="btn btn-danger" onclick="removeRow(this)">Xóa</button>
+                    <input
+                        type="text"
+                        class="form-input small-input readonly-input line-total-display"
+                        value=""
+                        readonly
+                    >
+                </td>
+
+                <td>
+                    <button type="button" class="btn btn-danger" onclick="removeRow(this)">Remove</button>
                 </td>
             `;
 
             tbody.appendChild(tr);
-            bindProductInputEvents(tr);
+            bindRowEvents(tr);
         }
 
         function removeRow(button) {
             const tbody = document.querySelector('#productTable tbody');
             if (tbody.rows.length === 1) {
-                alert('Phiếu nhập phải có ít nhất 1 sản phẩm.');
+                alert('A purchase order must contain at least one product.');
                 return;
             }
 
             button.closest('tr').remove();
+            updateGrandTotal();
         }
 
-        bindProductInputEvents();
+        document.querySelectorAll('#productTable tbody tr').forEach(row => bindRowEvents(row));
+        updateGrandTotal();
+
+        document.getElementById('purchaseOrderForm').addEventListener('submit', function (e) {
+            const rows = document.querySelectorAll('#productTable tbody tr');
+            let hasValidRow = false;
+
+            for (const row of rows) {
+                const productName = row.querySelector('.product-name-input').value.trim();
+                const productId = row.querySelector('.product-id-hidden').value.trim();
+                const quantity = parseInt(row.querySelector('.quantity-input').value || '0', 10);
+                const rawValue = row.querySelector('.new-import-price-input').value || '0';
+                const newImportPrice = parseFloat(rawValue.replace(/\./g, '')) || 0;
+                const rowError = row.querySelector('.row-error');
+
+                rowError.textContent = '';
+
+                const rowLooksEmpty = productName === '' && quantity === 0 && newImportPrice === 0;
+                if (rowLooksEmpty) {
+                    continue;
+                }
+
+                hasValidRow = true;
+
+                if (!productId) {
+                    rowError.textContent = 'Please select a valid product from the list.';
+                    e.preventDefault();
+                    return;
+                }
+
+                if (checkDuplicateProduct(row)) {
+                    e.preventDefault();
+                    return;
+                }
+
+                if (quantity <= 0) {
+                    rowError.textContent = 'Quantity must be greater than 0.';
+                    e.preventDefault();
+                    return;
+                }
+
+                if (newImportPrice <= 0) {
+                    rowError.textContent = 'New import price (this order) must be greater than 0.';
+                    e.preventDefault();
+                    return;
+                }
+            }
+
+            if (!hasValidRow) {
+                alert('Please add at least one valid product.');
+                e.preventDefault();
+            }
+        });
     </script>
 </body>
 </html>
